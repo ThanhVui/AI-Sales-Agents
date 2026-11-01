@@ -82,6 +82,17 @@ async def startup_event():
     print("[Startup] Initializing Zalo Browser Agent in background...")
     asyncio.create_task(zalo_agent.initialize())
 
+    async def _periodic_check():
+        while True:
+            await asyncio.sleep(25)
+            try:
+                if zalo_agent.page and not zalo_agent.page.is_closed() and not zalo_agent._lock.locked():
+                    await zalo_agent.check_login_status()
+            except Exception:
+                pass
+
+    asyncio.create_task(_periodic_check())
+
 
 @app.post("/api/session/backup")
 async def backup_session(background_tasks: BackgroundTasks):
@@ -121,14 +132,12 @@ async def serve_home():
 
 
 @app.get("/api/status")
-async def get_system_status():
-    is_logged = await zalo_agent.check_login_status()
-    # If not logged in, take a screenshot of QR if possible
-    if not is_logged:
-        await zalo_agent.capture_qr()
-
+async def get_system_status(check: bool = False):
+    # If explicit check requested, check live status
+    if check:
+        await zalo_agent.check_login_status()
     return {
-        "is_zalo_logged_in": is_logged,
+        "is_zalo_logged_in": zalo_agent.is_logged_in,
         "supabase_connected": supabase_db.is_connected,
         "batch_state": batch_worker.get_state()
     }
@@ -138,20 +147,7 @@ async def get_system_status():
 async def get_qr_image():
     qr_path = zalo_agent.qr_path
 
-    # If browser is not running or closed, boot it up
-    if not zalo_agent.page or zalo_agent.page.is_closed():
-        await zalo_agent.initialize()
-
-    # Capture if missing, empty or older than 20 seconds
-    need_capture = False
-    if not qr_path.exists() or qr_path.stat().st_size < 500:
-        need_capture = True
-    elif (asyncio.get_event_loop().time() - os.path.getmtime(qr_path)) > 20:
-        need_capture = True
-
-    if need_capture:
-        await zalo_agent.capture_qr()
-
+    # If QR file exists and is valid, serve it immediately
     if qr_path.exists() and qr_path.stat().st_size > 500:
         return FileResponse(
             str(qr_path),
@@ -163,18 +159,22 @@ async def get_qr_image():
             }
         )
 
-    # Clean SVG fallback so browser never displays broken image icon [x]
+    # If QR is not ready, trigger capture in background without blocking this HTTP request
+    if not zalo_agent._lock.locked():
+        asyncio.create_task(zalo_agent.capture_qr())
+
+    # Return clean, lightweight SVG placeholder instantly
     svg_fallback = """<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
       <rect width="220" height="220" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1.5"/>
       <circle cx="110" cy="85" r="26" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="75 35" stroke-linecap="round">
         <animateTransform attributeName="transform" type="rotate" from="0 110 85" to="360 110 85" dur="1s" repeatCount="indefinite"/>
       </circle>
-      <text x="110" y="140" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="12" font-weight="600" fill="#1e293b">Đang tạo mã QR...</text>
-      <text x="110" y="160" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11" fill="#64748b">Vui lòng đợi giây lát</text>
+      <text x="110" y="140" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="600" fill="#1e293b">Dang tao ma QR Zalo...</text>
+      <text x="110" y="160" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#64748b">Vui long cho 3-5 giay</text>
     </svg>"""
     return Response(
         content=svg_fallback,
-        media_type="image/svg+xml",
+        media_type="image/svg+xml; charset=utf-8",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",

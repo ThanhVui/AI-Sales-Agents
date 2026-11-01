@@ -789,7 +789,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
     // Check Zalo & System Status
     async function checkZaloStatus(manual = false) {
       try {
-        const res = await fetch('/api/status');
+        const res = await fetch('/api/status' + (manual ? '?check=true' : ''));
         const data = await res.json();
         
         isZaloLoggedIn = data.is_zalo_logged_in;
@@ -872,15 +872,12 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
       try {
         showToast('info', 'Đang xóa phiên cũ và tạo mã QR mới...');
         document.getElementById('modalQrStatus').innerText = 'Đang khởi động lại trình duyệt sạch...';
-        document.getElementById('modalQrImg').src = '/api/qr-image?t=' + Date.now();
         const res = await fetch('/api/logout', { method: 'POST' });
         const data = await res.json();
         showToast('success', data.message || 'Đã tạo mã QR mới!');
-        setTimeout(() => {
-          refreshQrImage();
-          document.getElementById('modalQrStatus').innerText = 'Quét mã QR bằng ứng dụng Zalo trên điện thoại';
-          checkZaloStatus();
-        }, 2000);
+        document.getElementById('modalQrStatus').innerText = 'Quét mã QR bằng ứng dụng Zalo trên điện thoại';
+        refreshQrImage();
+        checkZaloStatus();
       } catch (e) {
         showPopupAlert('error', 'Lỗi reset', String(e));
       }
