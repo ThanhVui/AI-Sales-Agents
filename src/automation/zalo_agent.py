@@ -48,13 +48,20 @@ class ZaloBrowserAgent:
                     "--no-first-run",
                     "--no-zygote",
                     "--disable-extensions",
-                    "--disable-background-networking",
                     "--disable-renderer-backgrounding",
                     "--js-flags=--max-old-space-size=128",
                     "--disable-blink-features=AutomationControlled",
                 ],
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             )
+
+            # Stealth injection to mask headless browser from Zalo security
+            await self.context.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                window.chrome = { runtime: {} };
+                Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'vi', 'en-US', 'en'] });
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            """)
 
             pages = self.context.pages
             self.page = pages[0] if pages else await self.context.new_page()
@@ -402,13 +409,20 @@ class ZaloBrowserAgent:
                         "--no-first-run",
                         "--no-zygote",
                         "--disable-extensions",
-                        "--disable-background-networking",
                         "--disable-renderer-backgrounding",
                         "--js-flags=--max-old-space-size=128",
                         "--disable-blink-features=AutomationControlled",
                     ],
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
                 )
+
+                # Stealth injection to mask headless browser from Zalo security
+                await self.context.add_init_script("""
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    window.chrome = { runtime: {} };
+                    Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'vi', 'en-US', 'en'] });
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                """)
 
                 pages = self.context.pages
                 self.page = pages[0] if pages else await self.context.new_page()
