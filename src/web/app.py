@@ -193,6 +193,12 @@ async def login_browser(background_tasks: BackgroundTasks):
     return {"status": "ok", "message": "Đang khởi động trình duyệt đăng nhập Zalo..."}
 
 
+@app.post("/api/refresh-qr")
+async def refresh_qr_endpoint(background_tasks: BackgroundTasks):
+    background_tasks.add_task(zalo_agent.refresh_qr)
+    return {"status": "ok", "message": "Đang lấy mã QR mới..."}
+
+
 @app.post("/api/dismiss-popup")
 async def dismiss_popup():
     """Explicitly dismiss Zalo 'Đổi thiết bị' / 'Đã hiểu' popup and check login status."""
@@ -202,9 +208,9 @@ async def dismiss_popup():
 
 
 @app.post("/api/logout")
-async def logout_zalo():
-    success = await zalo_agent.logout()
-    return {"success": success, "message": "Đã đăng xuất tài khoản Zalo"}
+async def logout_zalo(background_tasks: BackgroundTasks):
+    background_tasks.add_task(zalo_agent.logout)
+    return {"success": True, "message": "Đang đăng xuất và tạo mã QR mới trong nền..."}
 
 
 @app.post("/api/send-single")

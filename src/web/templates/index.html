@@ -868,15 +868,15 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
 
     async function launchLoginBrowser() {
       try {
-        showToast('info', 'Đang tạo mã QR đăng nhập Zalo mới...');
+        showToast('info', 'Đang làm mới mã QR Zalo...');
         document.getElementById('modalQrSpinner').classList.remove('hidden');
         document.getElementById('modalQrImg').classList.add('hidden');
-        document.getElementById('modalQrStatus').innerText = 'Đang khởi động trình duyệt...';
-        await fetch('/api/login-browser', { method: 'POST' });
+        document.getElementById('modalQrStatus').innerText = 'Đang lấy mã QR mới...';
+        await fetch('/api/refresh-qr', { method: 'POST' });
         setTimeout(() => {
           refreshQrImage();
           checkZaloStatus();
-        }, 2500);
+        }, 2000);
       } catch (e) {
         showPopupAlert('error', 'Lỗi khởi động', String(e));
       }
@@ -906,10 +906,15 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         document.getElementById('modalQrImg').classList.add('hidden');
         document.getElementById('modalQrStatus').innerText = 'Đang khởi động lại trình duyệt sạch...';
         const res = await fetch('/api/logout', { method: 'POST' });
-        const data = await res.json();
-        showToast('success', data.message || 'Đã tạo mã QR mới!');
-        refreshQrImage();
-        checkZaloStatus();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (err) {}
+        showToast('success', data.message || 'Đang tạo mã QR mới trong nền...');
+        setTimeout(() => {
+          refreshQrImage();
+          checkZaloStatus();
+        }, 3000);
       } catch (e) {
         showPopupAlert('error', 'Lỗi reset', String(e));
       }
@@ -935,7 +940,8 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
 
       try {
         const res = await fetch('/api/logout', { method: 'POST' });
-        const data = await res.json();
+        let data = {};
+        try { data = await res.json(); } catch(err) {}
         showToast('success', data.message || 'Đã đăng xuất Zalo');
         checkZaloStatus();
         setTimeout(() => openZaloModal(), 800);

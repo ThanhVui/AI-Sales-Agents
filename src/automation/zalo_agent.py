@@ -180,6 +180,26 @@ class ZaloBrowserAgent:
             except Exception:
                 pass
 
+            # Auto-click "Lấy mã mới" if QR is expired!
+            try:
+                btn_refresh_expired = await self.page.query_selector(
+                    "button:has-text('Lấy mã mới'), a:has-text('Lấy mã mới'), div:has-text('Lấy mã mới'), [role='button']:has-text('Lấy mã mới')"
+                )
+                if not btn_refresh_expired:
+                    loc = self.page.locator("text='Lấy mã mới'")
+                    if await loc.count() > 0:
+                        btn_refresh_expired = loc.last
+
+                if btn_refresh_expired:
+                    print("[ZaloBrowserAgent] Detected expired QR code. Clicking 'Lấy mã mới'...")
+                    try:
+                        await btn_refresh_expired.click()
+                    except Exception:
+                        await btn_refresh_expired.dispatch_event("click")
+                    await asyncio.sleep(1.5)
+            except Exception as e:
+                print(f"[ZaloBrowserAgent] Note refreshing expired QR: {e}")
+
             # Wait for QR element with reasonable timeout
             qr_elem = None
             try:
@@ -423,6 +443,39 @@ class ZaloBrowserAgent:
             except Exception as e:
                 print(f"[ZaloBrowserAgent] Error resetting session: {e}")
                 return False
+
+    async def refresh_qr(self) -> Optional[str]:
+        """Manually refresh QR code by clicking 'Lấy mã mới' or reloading page."""
+        if not self.page or self.page.is_closed():
+            await self.initialize()
+
+        if not self.page or self.page.is_closed():
+            return None
+
+        try:
+            btn_refresh = await self.page.query_selector(
+                "button:has-text('Lấy mã mới'), a:has-text('Lấy mã mới'), div:has-text('Lấy mã mới'), [role='button']:has-text('Lấy mã mới')"
+            )
+            if not btn_refresh:
+                loc = self.page.locator("text='Lấy mã mới'")
+                if await loc.count() > 0:
+                    btn_refresh = loc.last
+
+            if btn_refresh:
+                try:
+                    await btn_refresh.click()
+                except Exception:
+                    await btn_refresh.dispatch_event("click")
+                await asyncio.sleep(1.5)
+            else:
+                await self.page.reload(wait_until="domcontentloaded")
+                await asyncio.sleep(2)
+
+            self._last_capture_time = 0
+            return await self.capture_qr()
+        except Exception as e:
+            print(f"[ZaloBrowserAgent] refresh_qr error: {e}")
+            return None
 
     async def logout(self) -> bool:
         """Logout current Zalo session and prepare fresh QR code."""
