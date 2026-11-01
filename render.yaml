@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: synexan-ai-sales-real-estate
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: starter
+    region: singapore
+    healthCheckPath: /api/status
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: HEADLESS
+        value: "true"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_API_KEY_SERVICE_ROLE
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_URL_POSTGRES
+        sync: false
+

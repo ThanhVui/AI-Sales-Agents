@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synexan Real Estate CRM - Zalo Automation</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- SheetJS for Fast Excel Import / Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; color: #1f2937; }
+    
+    /* Ant Design Style Components */
+    .ant-card { background: #ffffff; border: 1px solid #f0f0f0; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03); }
+    .ant-btn { transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1); user-select: none; }
+    .ant-btn:active { transform: scale(0.97); }
+    .ant-input { border: 1px solid #d9d9d9; border-radius: 6px; transition: all 0.2s; }
+    .ant-input:focus { border-color: #4096ff; box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1); outline: none; }
+    
+    .tag-badge { cursor: pointer; user-select: none; transition: all 0.15s; }
+    .tag-badge:hover { opacity: 0.85; transform: translateY(-1px); }
+    .tag-badge:active { transform: scale(0.96); }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f5f5f5; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* SweetAlert2 Ant Design Light Theme */
+    .swal2-popup.swal-ant {
+      background: #ffffff !important;
+      color: #1f2937 !important;
+      border: 1px solid #e5e7eb !important;
+      border-radius: 12px !important;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    }
+    .swal2-title { color: #111827 !important; font-size: 1.15rem !important; font-weight: 600 !important; }
+    .swal2-html-container { color: #4b5563 !important; font-size: 0.875rem !important; }
+    
+    .editable-note { border-radius: 4px; padding: 2px 6px; transition: background 0.15s; }
+    .editable-note:hover { background-color: #f1f5f9; cursor: pointer; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header / Navbar (Ant Design Style) -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Project Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+          <i class="fa-solid fa-building-user text-base"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2">
+            Synexan Real Estate CRM
+            <span class="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Bất Động Sản</span>
+          </h1>
+          <p class="text-xs text-gray-500">Hệ thống chăm sóc khách hàng & Tự động hóa Zalo Masteri Centre Point</p>
+        </div>
+      </div>
+
+      <!-- Header Status Badges & Quick Actions -->
+      <div class="flex items-center gap-3">
+        <!-- Supabase Auto-Sync Indicator -->
+        <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Supabase: <strong>Tự động đồng bộ</strong></span>
+        </div>
+
+        <!-- Zalo Web Connection Status -->
+        <div id="zaloStatusContainer" class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-pointer" onclick="openZaloModal()">
+          <span id="zaloDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          <span id="zaloText">Zalo: Đang kiểm tra...</span>
+          <i class="fa-solid fa-qrcode ml-1 text-gray-400"></i>
+        </div>
+
+        <!-- Refresh Button -->
+        <button onclick="checkZaloStatus(true)" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span>Làm mới</span>
+        </button>
+
+        <!-- Logout Button -->
+        <button onclick="handleLogout()" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-red-50 text-red-600 border border-red-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Đăng xuất Zalo</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Workspace (Full Width Container) -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 flex flex-col gap-5">
+
+    <!-- Top Section: Campaign Controls & Smart Anti-Spam Schedule (White Ant Design Card) -->
+    <div class="ant-card p-5">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        <!-- Col 1: Message Template Editor & Tags (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-2">
+                <i class="fa-solid fa-comment-dots text-blue-600"></i> Mẫu Tin Nhắn Tự Động (Bất Động Sản)
+              </label>
+              <span class="text-xs text-gray-500">Kéo thả hoặc click thẻ để chèn vào vị trí mong muốn</span>
+            </div>
+
+            <!-- Draggable Tags Bar -->
+            <div class="flex flex-wrap gap-1.5 mb-2.5" id="tagsContainer">
+              <span draggable="true" ondragstart="handleDragStart(event)" onclick="insertTag('[Tên Khách Hàng]')" class="tag-badge px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-xs font-medium">
+                [Tên Khách Hàng]
+              </span>
+              <span draggable="true" ondragstart="handleDragStart(event)" onclick="insertTag('[Tên Căn Hộ]')" class="tag-badge px-2.5 py-1 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 text-xs font-medium">
+                [Tên Căn Hộ]
+              </span>
+              <span draggable="true" ondragstart="handleDragStart(event)" onclick="insertTag('[Mã Tòa]')" class="tag-badge px-2.5 py-1 rounded bg-purple-50 text-purple-700 border border-purple-200 text-xs font-medium">
+                [Mã Tòa]
+              </span>
+              <span draggable="true" ondragstart="handleDragStart(event)" onclick="insertTag('[Trục Căn]')" class="tag-badge px-2.5 py-1 rounded bg-pink-50 text-pink-700 border border-pink-200 text-xs font-medium">
+                [Trục Căn]
+              </span>
+              <span draggable="true" ondragstart="handleDragStart(event)" onclick="insertTag('[Giá Gốc]')" class="tag-badge px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium">
+                [Giá Gốc]
+              </span>
+            </div>
+
+            <!-- Template Textarea -->
+            <textarea id="templateText" ondrop="handleDrop(event)" ondragover="event.preventDefault()" rows="4" class="ant-input w-full p-3 text-xs text-gray-800 leading-relaxed font-sans">Anh [Tên Khách Hàng] ơi! Em đang có một khách hàng muốn mua hoặc THUÊ căn [Tên Căn Hộ].
+
+Mình có thể BÁN hoặc CHO THUÊ không ạ?  
+Nếu có, hãy cho em biết giá bán nhé!  
+Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
+          </div>
+
+          <!-- Live Preview Box -->
+          <div class="mt-3 p-2.5 bg-gray-50 rounded-md border border-gray-200 text-xs text-gray-600">
+            <span class="font-semibold text-gray-700 block mb-0.5"><i class="fa-solid fa-eye text-blue-500 mr-1"></i>Xem trước mẫu:</span>
+            <div id="previewSample" class="italic text-gray-700 whitespace-pre-line leading-relaxed">Đang tải xem trước...</div>
+          </div>
+        </div>
+
+        <!-- Col 2: Smart Anti-Spam Schedule & Campaign Status (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-gray-200 lg:pl-5 pt-4 lg:pt-0">
+          
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-600"></i> Lịch Trình Chống Khóa Zalo
+              </h3>
+              <!-- Schedule Mode Toggle -->
+              <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700">
+                <input type="checkbox" id="scheduleModeToggle" checked onchange="toggleScheduleMode()" class="rounded text-blue-600 focus:ring-0">
+                <span>Bật Lịch Trình (An Toàn)</span>
+              </label>
+            </div>
+
+            <!-- Schedule Customization Form -->
+            <div id="scheduleConfigBox" class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2 text-xs">
+              <!-- Sáng -->
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-700 w-24">Ca Sáng:</span>
+                <div class="flex items-center gap-1">
+                  <input type="time" id="mStart" value="09:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                  <span class="text-gray-400">-</span>
+                  <input type="time" id="mEnd" value="11:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="text-gray-500">Tối đa:</span>
+                  <input type="number" id="mLimit" value="15" min="1" max="50" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <span class="text-gray-500">khách</span>
+                </div>
+              </div>
+
+              <!-- Chiều -->
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-700 w-24">Ca Chiều:</span>
+                <div class="flex items-center gap-1">
+                  <input type="time" id="aStart" value="14:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                  <span class="text-gray-400">-</span>
+                  <input type="time" id="aEnd" value="16:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="text-gray-500">Tối đa:</span>
+                  <input type="number" id="aLimit" value="15" min="1" max="50" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <span class="text-gray-500">khách</span>
+                </div>
+              </div>
+
+              <!-- Tối -->
+              <div class="flex items-center justify-between">
+                <span class="font-medium text-gray-700 w-24">Ca Tối:</span>
+                <div class="flex items-center gap-1">
+                  <input type="time" id="eStart" value="19:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                  <span class="text-gray-400">-</span>
+                  <input type="time" id="eEnd" value="20:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="text-gray-500">Tối đa:</span>
+                  <input type="number" id="eLimit" value="10" min="1" max="30" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <span class="text-gray-500">khách</span>
+                </div>
+              </div>
+
+              <!-- Random Delay Jitter (Giãn cách ngẫu nhiên) -->
+              <div class="pt-1.5 border-t border-gray-200 flex items-center justify-between">
+                <span class="font-medium text-gray-700">Giãn cách ngẫu nhiên:</span>
+                <div class="flex items-center gap-1">
+                  <span class="text-gray-500">Từ</span>
+                  <input type="number" id="minDelayMin" value="5" min="1" max="60" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <span class="text-gray-500">đến</span>
+                  <input type="number" id="maxDelayMin" value="10" min="1" max="120" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <span class="text-gray-500">phút</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Current Session / Worker Live Status Banner -->
+            <div class="mt-3 p-2 rounded-md bg-blue-50/70 border border-blue-200 text-xs flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span id="workerStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-200 text-gray-700">IDLE</span>
+                <span id="sessionStatusText" class="text-gray-700 font-medium">Chờ kích hoạt chiến dịch</span>
+              </div>
+              <span id="nextDelayText" class="text-blue-700 font-mono text-[11px]">-</span>
+            </div>
+          </div>
+
+          <!-- Campaign Metric Badges Grid -->
+          <div class="grid grid-cols-4 gap-2 my-3">
+            <div class="bg-gray-50 p-2 rounded border border-gray-200 text-center">
+              <span class="text-[11px] text-gray-500 block">Tiến độ</span>
+              <strong id="metricProgress" class="text-sm font-bold text-gray-800">0 / 0</strong>
+            </div>
+            <div class="bg-emerald-50 p-2 rounded border border-emerald-200 text-center">
+              <span class="text-[11px] text-emerald-600 block">Đã gửi</span>
+              <strong id="metricSent" class="text-sm font-bold text-emerald-700">0</strong>
+            </div>
+            <div class="bg-amber-50 p-2 rounded border border-amber-200 text-center">
+              <span class="text-[11px] text-amber-600 block">Chưa ĐK</span>
+              <strong id="metricNotReg" class="text-sm font-bold text-amber-700">0</strong>
+            </div>
+            <div class="bg-red-50 p-2 rounded border border-red-200 text-center">
+              <span class="text-[11px] text-red-600 block">Lỗi</span>
+              <strong id="metricError" class="text-sm font-bold text-red-700">0</strong>
+            </div>
+          </div>
+
+          <!-- Campaign Control Buttons with Dynamic State Coloring -->
+          <div class="flex items-center gap-2" id="campaignButtonsContainer">
+            <!-- Bắt đầu gửi -->
+            <button onclick="startBatch(false)" id="btnStartBatch" class="ant-btn flex-1 py-2 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5">
+              <i class="fa-solid fa-play"></i> Bắt Đầu Gửi Tự Động
+            </button>
+
+            <!-- Tạm dừng -->
+            <button onclick="pauseBatch()" id="btnPauseBatch" class="ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50" disabled>
+              <i class="fa-solid fa-pause"></i> Tạm Dừng
+            </button>
+
+            <!-- Tiếp tục -->
+            <button onclick="resumeBatch()" id="btnResumeBatch" class="ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50" disabled>
+              <i class="fa-solid fa-forward"></i> Tiếp Tục
+            </button>
+
+            <!-- Dừng hẳn -->
+            <button onclick="stopBatch()" id="btnStopBatch" class="ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50" disabled>
+              <i class="fa-solid fa-stop"></i> Dừng Hẳn
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Main Section: Quản Lý Danh Sách Khách Hàng (Full Width Table) -->
+    <div class="ant-card p-5">
+      
+      <!-- Top Action Bar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        
+        <!-- Left Title & Counter -->
+        <div class="flex items-center gap-3">
+          <h2 class="text-sm font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
+            <i class="fa-solid fa-users text-blue-600"></i> Quản Lý Danh Sách Khách Hàng
+          </h2>
+          <span id="custCountBadge" class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+            0 khách hàng
+          </span>
+        </div>
+
+        <!-- Right Action Buttons Toolbar -->
+        <div class="flex flex-wrap items-center gap-2">
+          
+          <!-- Nạp Masteri -->
+          <button onclick="loadMasteriFile()" id="btnLoadMasteri" class="ant-btn px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-blue-600"></i> Nạp Masteri (2.290 căn)
+          </button>
+
+          <!-- Import Excel -->
+          <label class="ant-btn px-3 py-1.5 rounded-md bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-medium cursor-pointer flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel text-emerald-600"></i> Import Excel Khác
+            <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleExcelUpload(event)">
+          </label>
+
+          <!-- Export Excel Button -->
+          <button onclick="exportToExcel()" class="ant-btn px-3 py-1.5 rounded-md bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-file-export text-blue-600"></i> Export Excel
+          </button>
+
+          <!-- Thêm Khách Hàng Mới Button (Opens Modal) -->
+          <button onclick="openModal('addCustomerModal')" class="ant-btn px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-user-plus"></i> Thêm Khách Hàng Mới
+          </button>
+
+          <!-- Gửi Tin Từng Khách Hàng Button (Opens Modal) -->
+          <button onclick="openModal('singleSendModal')" class="ant-btn px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-paper-plane"></i> Gửi Tin Từng Khách
+          </button>
+
+          <!-- Xóa Toàn Bộ -->
+          <button onclick="handleDeleteAllCustomers()" class="ant-btn px-3 py-1.5 rounded-md bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-trash-can"></i> Xóa Toàn Bộ
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="mb-3.5 flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[280px]">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+          <input type="text" id="custSearch" oninput="currentPage = 1; renderTable()" placeholder="Tìm kiếm nhanh theo tên, căn hộ, số điện thoại, ghi chú..." class="ant-input w-full pl-8 pr-3 py-1.5 text-xs text-gray-800 bg-white">
+        </div>
+        <select id="statusFilter" onchange="currentPage = 1; renderTable()" class="ant-input px-3 py-1.5 text-xs text-gray-700 bg-white">
+          <option value="">Tất cả trạng thái</option>
+          <option value="Chưa gửi">Chưa gửi</option>
+          <option value="Đã gửi">Đã gửi</option>
+          <option value="Chưa đăng ký Zalo">Chưa ĐK Zalo</option>
+          <option value="Lỗi">Lỗi</option>
+        </select>
+      </div>
+
+      <!-- Customer Data Table (Full Width) -->
+      <div class="overflow-x-auto border border-gray-200 rounded-lg">
+        <table class="w-full text-left text-xs text-gray-700 divide-y divide-gray-200">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-[11px] font-semibold tracking-wider">
+            <tr>
+              <th class="py-3 px-3 w-12 text-center">STT</th>
+              <th class="py-3 px-3">Tên Khách Hàng</th>
+              <th class="py-3 px-3">Căn Hộ</th>
+              <th class="py-3 px-3">Tòa / Trục</th>
+              <th class="py-3 px-3">Điện Thoại</th>
+              <th class="py-3 px-3">Giá Gốc</th>
+              <th class="py-3 px-3 min-w-[180px]">Ghi Chú</th>
+              <th class="py-3 px-3">Trạng Thái</th>
+              <th class="py-3 px-3 text-right">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody id="custTableBody" class="bg-white divide-y divide-gray-100">
+            <tr>
+              <td colspan="9" class="text-center py-12 text-gray-400">Đang đồng bộ dữ liệu khách hàng...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination & Page Size Toolbar -->
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 border-t border-gray-100 pt-3">
+        <!-- Left: Showing info & Page size selector -->
+        <div class="flex items-center gap-3">
+          <span id="tableShowingInfo">Đang hiển thị 0 - 0 trong tổng số 0 khách hàng</span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-gray-500">Số hàng:</span>
+            <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="ant-input px-2 py-1 text-xs text-gray-700 bg-white">
+              <option value="10">10 / trang</option>
+              <option value="20" selected>20 / trang</option>
+              <option value="50">50 / trang</option>
+              <option value="100">100 / trang</option>
+              <option value="200">200 / trang</option>
+              <option value="500">500 / trang</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Right: Pagination Buttons -->
+        <div class="flex items-center gap-1" id="paginationControls">
+          <!-- Dynamically generated pagination -->
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ==================== MODALS (Ant Design Light Style) ==================== -->
+
+  <!-- Modal 1: Thêm Khách Hàng Mới -->
+  <div id="addCustomerModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="ant-card w-full max-w-lg p-6 shadow-2xl relative">
+      <button onclick="closeModal('addCustomerModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg border border-emerald-200">
+          <i class="fa-solid fa-user-plus"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-gray-900">Thêm Khách Hàng Mới</h3>
+          <p class="text-xs text-gray-500">Tự động đồng bộ và lưu trữ vĩnh viễn lên Supabase.</p>
+        </div>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Tên Khách Hàng <span class="text-red-500">*</span>:</label>
+          <input type="text" id="addName" placeholder="Nguyễn Văn A" class="ant-input w-full p-2 text-xs">
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Số Điện Thoại <span class="text-red-500">*</span>:</label>
+          <input type="text" id="addPhone" placeholder="0901514312" class="ant-input w-full p-2 text-xs font-mono">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-medium text-gray-700 block mb-1">Tên Căn Hộ:</label>
+            <input type="text" id="addApt" placeholder="C.02.09" class="ant-input w-full p-2 text-xs">
+          </div>
+          <div>
+            <label class="font-medium text-gray-700 block mb-1">Tòa / Trục:</label>
+            <input type="text" id="addBlock" placeholder="C - 09" class="ant-input w-full p-2 text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Giá Gốc:</label>
+          <input type="text" id="addPrice" placeholder="3,410,400,000" class="ant-input w-full p-2 text-xs">
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Ghi Chú Ban Đầu:</label>
+          <input type="text" id="addNote" placeholder="Khách hẹn tuần sau..." class="ant-input w-full p-2 text-xs">
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button onclick="closeModal('addCustomerModal')" class="ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Hủy</button>
+        <button onclick="handleAddCustomer()" id="btnAddCust" class="ant-btn px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> Thêm Khách Hàng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Gửi Tin Từng Khách Hàng (Single Send) -->
+  <div id="singleSendModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="ant-card w-full max-w-lg p-6 shadow-2xl relative">
+      <button onclick="closeModal('singleSendModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-lg border border-blue-200">
+          <i class="fa-solid fa-paper-plane"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-gray-900">Gửi Tin Từng Khách Hàng</h3>
+          <p class="text-xs text-gray-500">Nhập số điện thoại để tìm và gửi tin nhắn tức thì.</p>
+        </div>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Số điện thoại <span class="text-red-500">*</span>:</label>
+          <input type="text" id="singlePhone" placeholder="Ví dụ: 0901514312" class="ant-input w-full p-2 text-xs font-mono">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-medium text-gray-700 block mb-1">Tên khách (tùy chọn):</label>
+            <input type="text" id="singleName" placeholder="Anh Nam" class="ant-input w-full p-2 text-xs">
+          </div>
+          <div>
+            <label class="font-medium text-gray-700 block mb-1">Căn hộ (tùy chọn):</label>
+            <input type="text" id="singleApt" placeholder="A.17.07" class="ant-input w-full p-2 text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Nội dung tin nhắn <span class="text-red-500">*</span>:</label>
+          <textarea id="singleMessage" rows="4" class="ant-input w-full p-2.5 text-xs text-gray-800 leading-relaxed font-sans" placeholder="Nhập tin nhắn gửi khách..."></textarea>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button onclick="closeModal('singleSendModal')" class="ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Hủy</button>
+        <button onclick="handleSingleSend()" id="btnSingleSend" class="ant-btn px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5">
+          <i class="fa-solid fa-paper-plane"></i> Gửi Tin Ngay
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Xem Chi Tiết Khách Hàng -->
+  <div id="detailModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="ant-card w-full max-w-lg p-6 shadow-2xl relative">
+      <button onclick="closeModal('detailModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg border border-indigo-200">
+          <i class="fa-solid fa-id-card"></i>
+        </div>
+        <div>
+          <h3 id="detName" class="text-base font-bold text-gray-900">Chi Tiết Khách Hàng</h3>
+          <p id="detPhone" class="text-xs font-mono text-emerald-600 font-semibold">0901514312</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2.5 text-xs bg-gray-50 p-3.5 rounded-lg border border-gray-200 mb-4">
+        <div><span class="text-gray-500">Căn hộ:</span> <strong id="detApt" class="text-gray-900">-</strong></div>
+        <div><span class="text-gray-500">Mã Tòa / Trục:</span> <strong id="detBlock" class="text-gray-900">-</strong></div>
+        <div><span class="text-gray-500">Giá gốc:</span> <strong id="detPrice" class="text-gray-900">-</strong></div>
+        <div><span class="text-gray-500">Email:</span> <strong id="detEmail" class="text-gray-900">-</strong></div>
+        <div class="col-span-2"><span class="text-gray-500">Ghi chú:</span> <span id="detNote" class="text-gray-800 italic">-</span></div>
+        <div class="col-span-2"><span class="text-gray-500">Trạng thái Zalo:</span> <span id="detStatus">-</span></div>
+      </div>
+
+      <h4 class="text-xs font-bold uppercase text-gray-700 mb-2 flex items-center gap-1.5">
+        <i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Lịch Sử Gửi Tin Nhắn
+      </h4>
+      <div id="detLogs" class="max-h-40 overflow-y-auto space-y-2 text-xs bg-gray-50 p-3 rounded-lg border border-gray-200">
+        <div class="text-gray-400 italic">Chưa có lịch sử gửi tin nào.</div>
+      </div>
+
+      <div class="mt-5 flex justify-end">
+        <button onclick="closeModal('detailModal')" class="ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Chỉnh Sửa Khách Hàng -->
+  <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="ant-card w-full max-w-md p-6 shadow-2xl relative">
+      <button onclick="closeModal('editModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-user-pen text-blue-600"></i> Chỉnh Sửa Khách Hàng
+      </h3>
+
+      <input type="hidden" id="editOriginalPhone">
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Tên Khách Hàng:</label>
+          <input type="text" id="editName" class="ant-input w-full p-2 text-xs">
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Số Điện Thoại:</label>
+          <input type="text" id="editPhone" class="ant-input w-full p-2 text-xs font-mono bg-gray-100 text-gray-500" readonly>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-medium text-gray-700 block mb-1">Căn Hộ:</label>
+            <input type="text" id="editApt" class="ant-input w-full p-2 text-xs">
+          </div>
+          <div>
+            <label class="font-medium text-gray-700 block mb-1">Tòa / Trục:</label>
+            <input type="text" id="editBlock" class="ant-input w-full p-2 text-xs">
+          </div>
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Giá Gốc:</label>
+          <input type="text" id="editPrice" class="ant-input w-full p-2 text-xs">
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Ghi Chú:</label>
+          <textarea id="editNote" rows="2" class="ant-input w-full p-2 text-xs"></textarea>
+        </div>
+        <div>
+          <label class="font-medium text-gray-700 block mb-1">Trạng Thái:</label>
+          <select id="editStatus" class="ant-input w-full p-2 text-xs">
+            <option value="Chưa gửi">Chưa gửi</option>
+            <option value="Đã gửi">Đã gửi</option>
+            <option value="Chưa đăng ký Zalo">Chưa đăng ký Zalo</option>
+            <option value="Lỗi">Lỗi</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button onclick="closeModal('editModal')" class="ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Hủy</button>
+        <button onclick="saveEditCustomer()" class="ant-btn px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Đăng Nhập Zalo QR Code -->
+  <div id="zaloQrModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="ant-card w-full max-w-sm p-6 shadow-2xl relative text-center">
+      <button onclick="closeModal('zaloQrModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-base font-bold text-gray-900 mb-1">Đăng Nhập Zalo Web</h3>
+      <p class="text-xs text-gray-500 mb-4">Mở ứng dụng Zalo trên điện thoại và quét mã QR</p>
+
+      <div class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-[220px]">
+        <img id="modalQrImg" class="max-w-[200px] h-auto rounded border border-gray-300 shadow-sm" alt="Zalo QR Code" />
+        <p id="modalQrStatus" class="text-xs text-gray-500 mt-3 font-medium">Đang tải mã QR...</p>
+      </div>
+
+      <div class="mt-5 flex gap-2">
+        <button onclick="launchLoginBrowser()" class="ant-btn flex-1 py-2 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm">
+          <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới mã QR
+        </button>
+        <button onclick="closeModal('zaloQrModal')" class="ant-btn py-2 px-3 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== LOGIC & SCRIPTS ==================== -->
+  <script>
+    // State
+    let customers = [];
+    let isZaloLoggedIn = false;
+    let currentBatchState = { status: 'IDLE' };
+
+    // SweetAlert2 Toast Helper (Ant Design Style)
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      customClass: { popup: 'swal-ant' }
+    });
+
+    function showToast(icon, title) {
+      Toast.fire({ icon, title });
+    }
+
+    function showPopupAlert(icon, title, text) {
+      return Swal.fire({
+        icon,
+        title,
+        text,
+        customClass: {
+          popup: 'swal-ant',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-blue-600 text-white text-xs font-semibold'
+        },
+        buttonsStyling: false
+      });
+    }
+
+    // Modal Helpers
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function openZaloModal() {
+      if (!isZaloLoggedIn) {
+        document.getElementById('modalQrImg').src = '/api/qr-image?t=' + Date.now();
+        openModal('zaloQrModal');
+      } else {
+        showToast('info', 'Zalo Web đã đăng nhập và đang hoạt động!');
+      }
+    }
+
+    // Draggable Tags Logic
+    function handleDragStart(e) { e.dataTransfer.setData('text/plain', e.target.innerText.trim()); }
+    function handleDrop(e) {
+      e.preventDefault();
+      const tag = e.dataTransfer.getData('text/plain');
+      const textarea = document.getElementById('templateText');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      textarea.value = text.substring(0, start) + tag + text.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+      updatePreview();
+    }
+    function insertTag(tag) {
+      const textarea = document.getElementById('templateText');
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      textarea.value = text.substring(0, start) + tag + text.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+      textarea.focus();
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const template = document.getElementById('templateText').value;
+      let sample = template;
+      if (customers.length > 0) {
+        const c = customers[0];
+        sample = sample.replace(/\[Tên Khách Hàng\]/g, c.name || c['Tên Khách Hàng'] || 'Khách Hàng');
+        sample = sample.replace(/\[Tên Căn Hộ\]/g, c.apartment || c['Tên Căn Hộ'] || 'A.17.07');
+        sample = sample.replace(/\[Mã Tòa\]/g, c.block || c['Mã Tòa'] || 'A');
+        sample = sample.replace(/\[Trục Căn\]/g, c.axis || c['Trục Căn'] || '07');
+        sample = sample.replace(/\[Giá Gốc\]/g, c.price || c['Giá Gốc'] || '3,410,400,000');
+        sample = sample.replace(/\[Điện Thoại\]/g, c.phone || c['Điện Thoại'] || '0901514312');
+      } else {
+        sample = sample.replace(/\[Tên Khách Hàng\]/g, 'HUỲNH TẤN PHI')
+                       .replace(/\[Tên Căn Hộ\]/g, 'C.02.09')
+                       .replace(/\[Mã Tòa\]/g, 'C')
+                       .replace(/\[Trục Căn\]/g, '09')
+                       .replace(/\[Giá Gốc\]/g, '3,410,400,000')
+                       .replace(/\[Điện Thoại\]/g, '0903577901');
+      }
+      document.getElementById('previewSample').innerText = sample;
+    }
+    document.getElementById('templateText').addEventListener('input', updatePreview);
+
+    // Toggle Schedule Mode Box
+    function toggleScheduleMode() {
+      const isChecked = document.getElementById('scheduleModeToggle').checked;
+      const box = document.getElementById('scheduleConfigBox');
+      if (isChecked) {
+        box.classList.remove('opacity-40', 'pointer-events-none');
+      } else {
+        box.classList.add('opacity-40', 'pointer-events-none');
+      }
+    }
+
+    // Check Zalo & System Status
+    async function checkZaloStatus(manual = false) {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        isZaloLoggedIn = data.is_zalo_logged_in;
+        const container = document.getElementById('zaloStatusContainer');
+        const dot = document.getElementById('zaloDot');
+        const text = document.getElementById('zaloText');
+
+        if (isZaloLoggedIn) {
+          container.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer';
+          dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+          text.innerText = 'Zalo: Đã kết nối';
+          closeModal('zaloQrModal');
+        } else {
+          container.className = 'flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-pointer';
+          dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+          text.innerText = 'Zalo: Cần quét QR';
+        }
+
+        if (data.batch_state) {
+          updateBatchMetrics(data.batch_state);
+        }
+
+        if (manual) showToast('success', 'Đã cập nhật trạng thái hệ thống');
+      } catch (e) {
+        console.error('Status check error:', e);
+      }
+    }
+
+    async function launchLoginBrowser() {
+      try {
+        showToast('info', 'Đang tạo mã QR đăng nhập Zalo...');
+        const res = await fetch('/api/login-browser', { method: 'POST' });
+        setTimeout(() => {
+          document.getElementById('modalQrImg').src = '/api/qr-image?t=' + Date.now();
+          document.getElementById('modalQrStatus').innerText = 'Quét mã QR bằng ứng dụng Zalo trên điện thoại';
+          checkZaloStatus();
+        }, 3000);
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi khởi động', String(e));
+      }
+    }
+
+    async function handleLogout() {
+      const confirm = await Swal.fire({
+        title: 'Đăng xuất tài khoản Zalo?',
+        text: 'Phiên làm việc trên máy chủ sẽ được xóa để bạn đăng nhập số khác.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Đăng xuất',
+        cancelButtonText: 'Hủy',
+        customClass: {
+          popup: 'swal-ant',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-red-600 text-white text-xs font-semibold mr-2',
+          cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+        },
+        buttonsStyling: false
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const res = await fetch('/api/logout', { method: 'POST' });
+        const data = await res.json();
+        showToast('success', data.message || 'Đã đăng xuất Zalo');
+        checkZaloStatus();
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi đăng xuất', String(e));
+      }
+    }
+
+    // Single Send
+    async function handleSingleSend() {
+      const phone = document.getElementById('singlePhone').value.trim();
+      const name = document.getElementById('singleName').value.trim();
+      const apt = document.getElementById('singleApt').value.trim();
+      const message = document.getElementById('singleMessage').value.trim();
+
+      if (!phone) { showToast('warning', 'Vui lòng nhập số điện thoại'); return; }
+      if (!message) { showToast('warning', 'Vui lòng nhập nội dung tin nhắn'); return; }
+
+      const btn = document.getElementById('btnSingleSend');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi...';
+
+      try {
+        const res = await fetch('/api/send-single', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, name, apartment: apt, message })
+        });
+        const data = await res.json();
+        const cleanP = phone.replace(/\D/g, '');
+        let c = customers.find(x => String(x.phone || '').replace(/\D/g, '') === cleanP);
+
+        if (data.success) {
+          closeModal('singleSendModal');
+          showPopupAlert('success', 'Gửi Thành Công!', `Đã gửi tin nhắn tới ${phone} qua Zalo Web và lưu Supabase.`);
+          if (c) {
+            c.status = 'Đã gửi';
+            c['Trạng Thái'] = 'Đã gửi';
+          } else {
+            customers.unshift({
+              stt: 1,
+              name: name || 'Khách Hàng',
+              apartment: apt || '',
+              phone: phone,
+              status: 'Đã gửi',
+              note: ''
+            });
+          }
+          renderTable();
+        } else {
+          showPopupAlert('warning', 'Kết Quả Gửi', `${data.status || 'Thất bại'}: ${data.note || ''}`);
+          const newStatus = data.status || 'Chưa đăng ký Zalo';
+          if (c) {
+            c.status = newStatus;
+            c['Trạng Thái'] = newStatus;
+          } else {
+            customers.unshift({
+              stt: 1,
+              name: name || 'Khách Hàng',
+              apartment: apt || '',
+              phone: phone,
+              status: newStatus,
+              note: data.note || ''
+            });
+          }
+          renderTable();
+        }
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi gửi tin', String(e));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Gửi Tin Ngay';
+        checkZaloStatus();
+      }
+    }
+
+    // Add Customer
+    async function handleAddCustomer() {
+      const name = document.getElementById('addName').value.trim();
+      const phone = document.getElementById('addPhone').value.trim();
+      const apt = document.getElementById('addApt').value.trim();
+      const block = document.getElementById('addBlock').value.trim();
+      const price = document.getElementById('addPrice').value.trim();
+      const note = document.getElementById('addNote').value.trim();
+
+      if (!name || !phone) { showToast('warning', 'Vui lòng nhập Tên và Số điện thoại'); return; }
+
+      const btn = document.getElementById('btnAddCust');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang thêm...';
+
+      const newCust = {
+        stt: customers.length + 1,
+        name,
+        apartment: apt,
+        block,
+        phone,
+        price,
+        note,
+        status: 'Chưa gửi'
+      };
+
+      try {
+        await fetch('/api/customers/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCust)
+        });
+        customers.unshift(newCust);
+        renderTable();
+        closeModal('addCustomerModal');
+        showToast('success', 'Đã thêm khách hàng & tự động lưu Supabase!');
+        
+        // Reset inputs
+        document.getElementById('addName').value = '';
+        document.getElementById('addPhone').value = '';
+        document.getElementById('addApt').value = '';
+        document.getElementById('addBlock').value = '';
+        document.getElementById('addPrice').value = '';
+        document.getElementById('addNote').value = '';
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi thêm khách hàng', String(e));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Thêm Khách Hàng';
+      }
+    }
+
+    // Load Masteri File
+    async function loadMasteriFile() {
+      const btn = document.getElementById('btnLoadMasteri');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang nạp...';
+
+      try {
+        const res = await fetch('/api/load-masteri', { method: 'POST' });
+        const data = await res.json();
+        if (data.customers) {
+          customers = data.customers;
+          renderTable();
+          updatePreview();
+          showToast('success', 'Đã nạp 2.290 căn Masteri & tự động đồng bộ Supabase');
+        }
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi tải Masteri', String(e));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-bolt text-blue-600"></i> Nạp Masteri (2.290 căn)';
+      }
+    }
+
+    // Handle Custom Excel Upload
+    function handleExcelUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          
+          if (!jsonRows || jsonRows.length < 2) {
+            showToast('warning', 'File Excel không có dữ liệu!');
+            return;
+          }
+
+          const rawHeaders = jsonRows[0] || [];
+          const headerMap = {};
+          rawHeaders.forEach((h, idx) => {
+            const clean = (h == null ? '' : String(h)).trim().toLowerCase();
+            if (clean.includes('tên khách') || clean.includes('khách hàng')) headerMap['name'] = idx;
+            else if (clean.includes('căn hộ') || clean.includes('mã căn')) headerMap['apt'] = idx;
+            else if (clean.includes('tòa')) headerMap['block'] = idx;
+            else if (clean.includes('trục')) headerMap['axis'] = idx;
+            else if (clean.includes('thoại') || clean.includes('sđt') || clean.includes('phone')) headerMap['phone'] = idx;
+            else if (clean.includes('giá')) headerMap['price'] = idx;
+            else if (clean.includes('email')) headerMap['email'] = idx;
+            else if (clean.includes('ghi chú')) headerMap['note'] = idx;
+            else if (clean.includes('trạng thái')) headerMap['status'] = idx;
+          });
+
+          const parsed = [];
+          for (let r = 1; r < jsonRows.length; r++) {
+            const row = jsonRows[r];
+            if (!row || row.length === 0) continue;
+            const phone = row[headerMap['phone'] != null ? headerMap['phone'] : 5] || '';
+            if (!phone) continue;
+
+            parsed.push({
+              stt: r,
+              name: String(row[headerMap['name'] != null ? headerMap['name'] : 1] || 'Khách Hàng').trim(),
+              apartment: String(row[headerMap['apt'] != null ? headerMap['apt'] : 2] || '').trim(),
+              block: String(row[headerMap['block'] != null ? headerMap['block'] : 3] || '').trim(),
+              axis: String(row[headerMap['axis'] != null ? headerMap['axis'] : 4] || '').trim(),
+              phone: String(phone).trim(),
+              price: String(row[headerMap['price'] != null ? headerMap['price'] : 6] || '').trim(),
+              email: String(row[headerMap['email'] != null ? headerMap['email'] : 7] || '').trim(),
+              note: String(row[headerMap['note'] != null ? headerMap['note'] : 8] || '').trim(),
+              status: String(row[headerMap['status'] != null ? headerMap['status'] : 9] || 'Chưa gửi').trim()
+            });
+          }
+
+          customers = parsed;
+          renderTable();
+          updatePreview();
+          showToast('success', `Đã tải ${customers.length} khách hàng & đang đồng bộ Supabase!`);
+
+          fetch('/api/customers/sync-to-db', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customers })
+          });
+        } catch (err) {
+          showPopupAlert('error', 'Lỗi đọc file', err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Export Excel Feature
+    function exportToExcel() {
+      if (customers.length === 0) {
+        showToast('warning', 'Danh sách khách hàng đang trống!');
+        return;
+      }
+      try {
+        const exportData = customers.map((c, idx) => ({
+          "STT": c.stt || (idx + 1),
+          "Tên Khách Hàng": c.name || '',
+          "Tên Căn Hộ": c.apartment || '',
+          "Mã Tòa": c.block || '',
+          "Trục Căn": c.axis || '',
+          "Điện Thoại": c.phone || '',
+          "Giá Gốc": c.price || '',
+          "Email": c.email || '',
+          "Ghi Chú": c.note || '',
+          "Trạng Thái": c.status || 'Chưa gửi'
+        }));
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Khách Hàng");
+        const filename = `Danh_Sach_Khach_Hang_Masteri_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        showToast('success', 'Đã xuất file Excel thành công!');
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi xuất Excel', String(e));
+      }
+    }
+
+    // Pagination State
+    let currentPage = 1;
+    let pageSize = 20;
+
+    function changePageSize(size) {
+      pageSize = parseInt(size) || 20;
+      currentPage = 1;
+      renderTable();
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderTable();
+    }
+
+    function renderPagination(totalItems) {
+      const totalPages = Math.ceil(totalItems / pageSize) || 1;
+      const container = document.getElementById('paginationControls');
+      if (!container) return;
+
+      if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+
+      // First button
+      html += `<button onclick="goToPage(1)" title="Trang đầu" ${currentPage === 1 ? 'disabled' : ''} class="ant-btn px-2.5 py-1 rounded text-xs ${currentPage === 1 ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600'}"><i class="fa-solid fa-angles-left text-[10px]"></i></button>`;
+
+      // Prev button
+      html += `<button onclick="goToPage(${currentPage - 1})" title="Trang trước" ${currentPage === 1 ? 'disabled' : ''} class="ant-btn px-2.5 py-1 rounded text-xs ${currentPage === 1 ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600'}"><i class="fa-solid fa-chevron-left text-[10px]"></i></button>`;
+
+      // Page numbers with ellipsis
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, currentPage + 2);
+
+      if (startPage > 1) {
+        html += `<button onclick="goToPage(1)" class="ant-btn px-2.5 py-1 rounded text-xs bg-white border border-gray-300 text-gray-700 hover:border-blue-500">1</button>`;
+        if (startPage > 2) html += `<span class="px-1 text-gray-400">...</span>`;
+      }
+
+      for (let p = startPage; p <= endPage; p++) {
+        const isActive = p === currentPage;
+        html += `<button onclick="goToPage(${p})" class="ant-btn px-2.5 py-1 rounded text-xs font-semibold ${isActive ? 'bg-blue-600 text-white border border-blue-600 shadow-xs' : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600'}">${p}</button>`;
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="px-1 text-gray-400">...</span>`;
+        html += `<button onclick="goToPage(${totalPages})" class="ant-btn px-2.5 py-1 rounded text-xs bg-white border border-gray-300 text-gray-700 hover:border-blue-500">${totalPages}</button>`;
+      }
+
+      // Next button
+      html += `<button onclick="goToPage(${currentPage + 1})" title="Trang sau" ${currentPage === totalPages ? 'disabled' : ''} class="ant-btn px-2.5 py-1 rounded text-xs ${currentPage === totalPages ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600'}"><i class="fa-solid fa-chevron-right text-[10px]"></i></button>`;
+
+      // Last button
+      html += `<button onclick="goToPage(${totalPages})" title="Trang cuối" ${currentPage === totalPages ? 'disabled' : ''} class="ant-btn px-2.5 py-1 rounded text-xs ${currentPage === totalPages ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white border border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600'}"><i class="fa-solid fa-angles-right text-[10px]"></i></button>`;
+
+      container.innerHTML = html;
+    }
+
+    // Render Table with Search, Status filtering, Pagination and Inline Note Editing
+    function renderTable() {
+      const tbody = document.getElementById('custTableBody');
+      const badge = document.getElementById('custCountBadge');
+      const info = document.getElementById('tableShowingInfo');
+      const query = (document.getElementById('custSearch').value || '').toLowerCase().trim();
+      const statusFilter = document.getElementById('statusFilter').value;
+
+      badge.innerText = `${customers.length.toLocaleString()} khách hàng`;
+      updateMetricsDisplay();
+
+      const filtered = customers.filter(c => {
+        if (statusFilter && (c.status || 'Chưa gửi') !== statusFilter) return false;
+        if (!query) return true;
+        const n = (c.name || '').toLowerCase();
+        const a = (c.apartment || '').toLowerCase();
+        const p = (c.phone || '').toLowerCase();
+        const note = (c.note || '').toLowerCase();
+        return n.includes(query) || a.includes(query) || p.includes(query) || note.includes(query);
+      });
+
+      const totalFiltered = filtered.length;
+      if (totalFiltered === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-10 text-gray-400">Không tìm thấy khách hàng phù hợp.</td></tr>';
+        info.innerText = 'Đang hiển thị 0 khách hàng';
+        renderPagination(0);
+        return;
+      }
+
+      const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, totalFiltered);
+      const pageItems = filtered.slice(startIndex, endIndex);
+
+      info.innerText = `Đang hiển thị ${startIndex + 1} - ${endIndex} trong tổng số ${totalFiltered.toLocaleString()} khách hàng`;
+      renderPagination(totalFiltered);
+
+      let html = '';
+      pageItems.forEach((c, i) => {
+        let statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">Chưa gửi</span>';
+        if (c.status === 'Đã gửi') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đã gửi</span>';
+        } else if (c.status === 'Chưa đăng ký Zalo') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Chưa ĐK Zalo</span>';
+        } else if (c.status && c.status.includes('Lỗi')) {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">Lỗi</span>';
+        }
+
+        const phone = c.phone || '';
+        const note = c.note || '';
+
+        html += '<tr class="hover:bg-blue-50/40 transition group">';
+        html += '<td class="py-2.5 px-3 text-center text-gray-400 font-medium">' + (c.stt || (i + 1)) + '</td>';
+        html += '<td class="py-2.5 px-3 font-semibold text-gray-900 cursor-pointer hover:text-blue-600" onclick="showCustomerDetail(\'' + phone + '\')">' + (c.name || '') + '</td>';
+        html += '<td class="py-2.5 px-3 text-blue-700 font-semibold">' + (c.apartment || '') + '</td>';
+        html += '<td class="py-2.5 px-3 text-gray-500">' + (c.block || '') + ' - ' + (c.axis || '') + '</td>';
+        html += '<td class="py-2.5 px-3 font-mono text-emerald-700 font-medium">' + phone + '</td>';
+        html += '<td class="py-2.5 px-3 text-gray-600">' + (c.price || '') + '</td>';
+        
+        // Editable Note Cell
+        html += '<td class="py-2.5 px-3">';
+        html += '<div class="editable-note flex items-center justify-between text-gray-700" onclick="handleEditNote(\'' + phone + '\', \'' + escapeHtml(note) + '\')">';
+        html += '<span class="truncate ' + (note ? 'text-gray-800' : 'text-gray-400 italic') + '">' + (note || 'Thêm ghi chú...') + '</span>';
+        html += '<i class="fa-solid fa-pen text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 ml-1"></i>';
+        html += '</div>';
+        html += '</td>';
+
+        html += '<td class="py-2.5 px-3">' + statusBadge + '</td>';
+        
+        // Actions
+        html += '<td class="py-2.5 px-3 text-right whitespace-nowrap">';
+        html += '<button onclick="fillSingleSend(\'' + phone + '\', \'' + escapeHtml(c.name || '') + '\', \'' + escapeHtml(c.apartment || '') + '\')" title="Gửi tin" class="ant-btn p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs mr-1"><i class="fa-solid fa-paper-plane"></i></button>';
+        html += '<button onclick="showCustomerDetail(\'' + phone + '\')" title="Xem chi tiết" class="ant-btn p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs mr-1"><i class="fa-solid fa-eye"></i></button>';
+        html += '<button onclick="openEditCustomerModal(\'' + phone + '\')" title="Chỉnh sửa" class="ant-btn p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded text-xs mr-1"><i class="fa-solid fa-pen"></i></button>';
+        html += '<button onclick="handleDeleteCustomer(\'' + phone + '\')" title="Xóa khách" class="ant-btn p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs"><i class="fa-solid fa-trash"></i></button>';
+        html += '</td>';
+        html += '</tr>';
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function fillSingleSend(phone, name, apt) {
+      document.getElementById('singlePhone').value = phone;
+      document.getElementById('singleName').value = name;
+      document.getElementById('singleApt').value = apt;
+      const t = document.getElementById('templateText').value;
+      const msg = t.replace(/\[Tên Khách Hàng\]/g, name).replace(/\[Tên Căn Hộ\]/g, apt);
+      document.getElementById('singleMessage').value = msg;
+      openModal('singleSendModal');
+    }
+
+    // Inline / Quick Note Editing
+    async function handleEditNote(phone, currentNote) {
+      const { value: newNote } = await Swal.fire({
+        title: 'Cập nhật ghi chú',
+        input: 'textarea',
+        inputLabel: 'Ghi chú cho khách hàng SĐT: ' + phone,
+        inputValue: currentNote,
+        showCancelButton: true,
+        confirmButtonText: 'Lưu Ghi Chú',
+        cancelButtonText: 'Hủy',
+        customClass: {
+          popup: 'swal-ant',
+          input: 'ant-input w-full p-2 text-xs',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-blue-600 text-white text-xs font-semibold mr-2',
+          cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+        },
+        buttonsStyling: false
+      });
+
+      if (newNote !== undefined) {
+        const c = customers.find(x => x.phone === phone);
+        if (c) c.note = newNote;
+        renderTable();
+
+        await fetch('/api/customers/update-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, note: newNote })
+        });
+        showToast('success', 'Đã cập nhật ghi chú lên Supabase!');
+      }
+    }
+
+    // View Customer Detail
+    async function showCustomerDetail(phone) {
+      try {
+        const res = await fetch('/api/customers/detail?phone=' + phone);
+        const data = await res.json();
+        const c = data.customer || customers.find(x => x.phone === phone);
+        if (!c) return;
+
+        document.getElementById('detName').innerText = c.name || 'Khách Hàng';
+        document.getElementById('detPhone').innerText = c.phone || '';
+        document.getElementById('detApt').innerText = c.apartment || 'Chưa cập nhật';
+        document.getElementById('detBlock').innerText = `${c.block || ''} - ${c.axis || ''}`;
+        document.getElementById('detPrice').innerText = c.price || 'Thương lượng';
+        document.getElementById('detEmail').innerText = c.email || 'Không có';
+        document.getElementById('detNote').innerText = c.note || 'Chưa có ghi chú';
+        document.getElementById('detStatus').innerText = c.status || 'Chưa gửi';
+
+        const logsCont = document.getElementById('detLogs');
+        if (data.logs && data.logs.length > 0) {
+          let logHtml = '';
+          data.logs.forEach(l => {
+            logHtml += '<div class="p-2 rounded bg-white border border-gray-200 shadow-2xs">';
+            logHtml += '<div class="flex justify-between text-gray-500 text-[10px] mb-1">';
+            logHtml += `<span>${new Date(l.created_at).toLocaleString()}</span>`;
+            logHtml += `<span class="text-emerald-600 font-semibold">${l.status}</span>`;
+            logHtml += '</div>';
+            logHtml += `<div class="text-gray-800">${l.message || ''}</div>`;
+            logHtml += '</div>';
+          });
+          logsCont.innerHTML = logHtml;
+        } else {
+          logsCont.innerHTML = '<div class="text-gray-400 italic">Chưa có lịch sử gửi tin nào.</div>';
+        }
+
+        openModal('detailModal');
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi xem chi tiết', String(e));
+      }
+    }
+
+    // Edit Customer Modal
+    function openEditCustomerModal(phone) {
+      const c = customers.find(x => x.phone === phone);
+      if (!c) return;
+
+      document.getElementById('editOriginalPhone').value = phone;
+      document.getElementById('editName').value = c.name || '';
+      document.getElementById('editPhone').value = phone;
+      document.getElementById('editApt').value = c.apartment || '';
+      document.getElementById('editBlock').value = `${c.block || ''}${c.axis ? ' - ' + c.axis : ''}`;
+      document.getElementById('editPrice').value = c.price || '';
+      document.getElementById('editNote').value = c.note || '';
+      document.getElementById('editStatus').value = c.status || 'Chưa gửi';
+
+      openModal('editModal');
+    }
+
+    async function saveEditCustomer() {
+      const phone = document.getElementById('editOriginalPhone').value;
+      const name = document.getElementById('editName').value.trim();
+      const apt = document.getElementById('editApt').value.trim();
+      const price = document.getElementById('editPrice').value.trim();
+      const note = document.getElementById('editNote').value.trim();
+      const status = document.getElementById('editStatus').value;
+
+      const c = customers.find(x => x.phone === phone);
+      if (c) {
+        c.name = name;
+        c.apartment = apt;
+        c.price = price;
+        c.note = note;
+        c.status = status;
+      }
+      renderTable();
+      closeModal('editModal');
+
+      try {
+        await fetch('/api/customers/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, name, apartment: apt, price, note, status })
+        });
+        showToast('success', 'Đã cập nhật khách hàng lên Supabase!');
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi cập nhật', String(e));
+      }
+    }
+
+    // Delete Single Customer
+    async function handleDeleteCustomer(phone) {
+      const confirm = await Swal.fire({
+        title: 'Xóa khách hàng?',
+        text: `Bạn có chắc muốn xóa SĐT ${phone} khỏi danh sách và Supabase?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Xóa ngay',
+        cancelButtonText: 'Hủy',
+        customClass: {
+          popup: 'swal-ant',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-red-600 text-white text-xs font-semibold mr-2',
+          cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+        },
+        buttonsStyling: false
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      customers = customers.filter(x => x.phone !== phone);
+      renderTable();
+
+      try {
+        await fetch('/api/customers/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        });
+        showToast('success', 'Đã xóa khách hàng thành công!');
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi xóa', String(e));
+      }
+    }
+
+    // Delete All Customers
+    async function handleDeleteAllCustomers() {
+      if (customers.length === 0) {
+        showToast('info', 'Danh sách khách hàng đang trống');
+        return;
+      }
+
+      const confirm = await Swal.fire({
+        title: 'XÓA TOÀN BỘ KHÁCH HÀNG?',
+        text: `Thao tác này sẽ xóa sạch ${customers.length.toLocaleString()} khách hàng khỏi hệ thống và Supabase!`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonText: 'Đồng ý xóa hết',
+        cancelButtonText: 'Hủy',
+        customClass: {
+          popup: 'swal-ant',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-red-600 text-white text-xs font-semibold mr-2',
+          cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+        },
+        buttonsStyling: false
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      customers = [];
+      renderTable();
+      updatePreview();
+
+      try {
+        await fetch('/api/customers/delete-all', { method: 'POST' });
+        showToast('success', 'Đã xóa toàn bộ khách hàng!');
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi xóa toàn bộ', String(e));
+      }
+    }
+
+    // Batch Campaign Controls with Smart Schedule
+    async function startBatch(testOnly = false) {
+      if (!isZaloLoggedIn) {
+        openZaloModal();
+        showPopupAlert('warning', 'Chưa Đăng Nhập Zalo', 'Vui lòng quét mã QR đăng nhập Zalo trước khi chạy gửi!');
+        return;
+      }
+      if (customers.length === 0) {
+        showPopupAlert('warning', 'Chưa Có Dữ Liệu', 'Vui lòng nạp danh sách khách hàng trước!');
+        return;
+      }
+
+      const template = document.getElementById('templateText').value.trim();
+      const isScheduleMode = document.getElementById('scheduleModeToggle').checked;
+
+      const minDelayMin = parseFloat(document.getElementById('minDelayMin').value) || 5;
+      const maxDelayMin = parseFloat(document.getElementById('maxDelayMin').value) || 10;
+
+      const scheduleConfig = {
+        mode: isScheduleMode ? "schedule" : "continuous",
+        min_delay: Math.round(minDelayMin * 60),
+        max_delay: Math.round(maxDelayMin * 60),
+        morning: {
+          start: document.getElementById('mStart').value,
+          end: document.getElementById('mEnd').value,
+          limit: parseInt(document.getElementById('mLimit').value) || 15
+        },
+        afternoon: {
+          start: document.getElementById('aStart').value,
+          end: document.getElementById('aEnd').value,
+          limit: parseInt(document.getElementById('aLimit').value) || 15
+        },
+        evening: {
+          start: document.getElementById('eStart').value,
+          end: document.getElementById('eEnd').value,
+          limit: parseInt(document.getElementById('eLimit').value) || 10
+        }
+      };
+
+      try {
+        const res = await fetch('/api/batch/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customers,
+            template,
+            schedule_config: scheduleConfig,
+            test_only: testOnly
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('success', testOnly ? 'Đã bắt đầu gửi thử nghiệm (0901514312)!' : 'Đã kích hoạt chiến dịch an toàn!');
+        } else {
+          showPopupAlert('warning', 'Không thể bắt đầu', data.message);
+        }
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi bắt đầu chiến dịch', String(e));
+      }
+    }
+
+    async function pauseBatch() {
+      await fetch('/api/batch/pause', { method: 'POST' });
+      showToast('info', 'Đã tạm dừng chiến dịch');
+    }
+    async function resumeBatch() {
+      await fetch('/api/batch/resume', { method: 'POST' });
+      showToast('success', 'Đang tiếp tục gửi...');
+    }
+    async function stopBatch() {
+      const confirm = await Swal.fire({
+        title: 'Dừng hẳn chiến dịch?',
+        text: 'Tiến trình gửi ngầm sẽ kết thúc hoàn toàn.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Dừng hẳn',
+        cancelButtonText: 'Hủy',
+        customClass: {
+          popup: 'swal-ant',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-red-600 text-white text-xs font-semibold mr-2',
+          cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+        },
+        buttonsStyling: false
+      });
+
+      if (confirm.isConfirmed) {
+        await fetch('/api/batch/stop', { method: 'POST' });
+        showToast('warning', 'Đã yêu cầu dừng chiến dịch');
+      }
+    }
+
+    // Dynamic Visual State for Batch Buttons (Ant Design Palette)
+    function updateBatchButtonStyles(status) {
+      const btnStart = document.getElementById('btnStartBatch');
+      const btnPause = document.getElementById('btnPauseBatch');
+      const btnResume = document.getElementById('btnResumeBatch');
+      const btnStop = document.getElementById('btnStopBatch');
+      const badge = document.getElementById('workerStatusBadge');
+
+      if (status === 'RUNNING' || status === 'WAITING_SCHEDULE') {
+        badge.className = status === 'RUNNING' ? 'px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800' : 'px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 animate-pulse';
+        badge.innerText = status === 'RUNNING' ? 'RUNNING' : 'WAITING';
+
+        btnStart.className = 'ant-btn flex-1 py-2 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnStart.disabled = true;
+
+        btnPause.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white shadow-sm';
+        btnPause.disabled = false;
+
+        btnResume.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnResume.disabled = true;
+
+        btnStop.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white shadow-sm';
+        btnStop.disabled = false;
+
+      } else if (status === 'PAUSED') {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800';
+        badge.innerText = 'PAUSED';
+
+        btnStart.className = 'ant-btn flex-1 py-2 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnStart.disabled = true;
+
+        btnPause.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnPause.disabled = true;
+
+        btnResume.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white shadow-sm animate-pulse';
+        btnResume.disabled = false;
+
+        btnStop.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white shadow-sm';
+        btnStop.disabled = false;
+
+      } else {
+        badge.className = 'px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-200 text-gray-700';
+        badge.innerText = 'IDLE';
+
+        btnStart.className = 'ant-btn flex-1 py-2 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5';
+        btnStart.disabled = false;
+
+        btnPause.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnPause.disabled = true;
+        btnResume.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnResume.disabled = true;
+        btnStop.className = 'ant-btn py-2 px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50';
+        btnStop.disabled = true;
+      }
+    }
+
+    function updateMetricsDisplay() {
+      const total = customers.length;
+      let sent = 0;
+      let notReg = 0;
+      let error = 0;
+
+      customers.forEach(c => {
+        const s = String(c.status || c['Trạng Thái'] || '').trim();
+        if (s === 'Đã gửi') sent++;
+        else if (s === 'Chưa đăng ký Zalo') notReg++;
+        else if (s.includes('Lỗi')) error++;
+      });
+
+      const processed = sent + notReg + error;
+
+      if (currentBatchState && (currentBatchState.status === 'RUNNING' || currentBatchState.status === 'WAITING_SCHEDULE')) {
+        const batchTotal = currentBatchState.total_count || total;
+        const batchIndex = currentBatchState.current_index || processed;
+        document.getElementById('metricProgress').innerText = `${batchIndex} / ${batchTotal}`;
+        document.getElementById('metricSent').innerText = Math.max(sent, currentBatchState.sent_count || 0);
+        document.getElementById('metricNotReg').innerText = Math.max(notReg, currentBatchState.not_registered_count || 0);
+        document.getElementById('metricError').innerText = Math.max(error, currentBatchState.error_count || 0);
+      } else {
+        document.getElementById('metricProgress').innerText = `${processed} / ${total}`;
+        document.getElementById('metricSent').innerText = sent;
+        document.getElementById('metricNotReg').innerText = notReg;
+        document.getElementById('metricError').innerText = error;
+      }
+    }
+
+    function updateBatchMetrics(state) {
+      currentBatchState = state;
+      updateMetricsDisplay();
+
+      // Session & Delay Text
+      const sessionText = document.getElementById('sessionStatusText');
+      const delayText = document.getElementById('nextDelayText');
+
+      if (state.status === 'WAITING_SCHEDULE') {
+        sessionText.innerText = state.current_session_name || 'Đang nghỉ chờ khung giờ tiếp theo';
+      } else if (state.status === 'RUNNING') {
+        sessionText.innerText = `Đang gửi: Ca ${state.current_session_name || 'Liên tục'}`;
+      } else {
+        sessionText.innerText = 'Chờ kích hoạt chiến dịch';
+      }
+
+      delayText.innerText = state.next_action_time ? `Lần gửi tới: ${state.next_action_time}` : '';
+
+      updateBatchButtonStyles(state.status);
+    }
+
+    // Auto-load customers on init
+    async function initAutoLoad() {
+      try {
+        const res = await fetch('/api/customers');
+        const data = await res.json();
+        if (data.customers && data.customers.length > 0) {
+          customers = data.customers;
+          renderTable();
+          updatePreview();
+        } else {
+          loadMasteriFile();
+        }
+      } catch (e) {
+        loadMasteriFile();
+      }
+    }
+
+    // Polling every 3.5s
+    setInterval(() => checkZaloStatus(false), 3500);
+
+    // Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      checkZaloStatus(false);
+      updatePreview();
+      initAutoLoad();
+    });
+  </script>
+</body>
+</html>
