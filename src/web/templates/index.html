@@ -625,13 +625,18 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         <p id="modalQrStatus" class="text-xs text-gray-500 mt-3 font-medium">Quét mã QR bằng ứng dụng Zalo trên điện thoại</p>
       </div>
 
-      <div class="mt-5 flex gap-2">
-        <button onclick="launchLoginBrowser()" class="ant-btn flex-1 py-2 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm">
-          <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới mã QR
+      <div class="mt-5 flex flex-col gap-2">
+        <button onclick="handleDismissPopup()" class="ant-btn w-full py-2 px-3 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-circle-check"></i> Xác nhận "Đã hiểu" (Đổi thiết bị)
         </button>
-        <button onclick="closeModal('zaloQrModal')" class="ant-btn py-2 px-3 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">
-          Đóng
-        </button>
+        <div class="flex gap-2">
+          <button onclick="launchLoginBrowser()" class="ant-btn flex-1 py-2 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới mã QR
+          </button>
+          <button onclick="closeModal('zaloQrModal')" class="ant-btn py-2 px-3 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">
+            Đóng
+          </button>
+        </div>
       </div>
 
       <!-- Cloud Storage Sync Buttons -->
@@ -807,6 +812,24 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         if (manual) showToast('success', 'Đã cập nhật trạng thái hệ thống');
       } catch (e) {
         console.error('Status check error:', e);
+      }
+    }
+
+    async function handleDismissPopup() {
+      try {
+        showToast('info', 'Đang xác nhận "Đã hiểu" trên Zalo...');
+        const res = await fetch('/api/dismiss-popup', { method: 'POST' });
+        const data = await res.json();
+        if (data.is_logged_in) {
+          showToast('success', 'Zalo đã đăng nhập thành công!');
+          checkZaloStatus(true);
+        } else {
+          showToast('info', 'Đã nhấn xác nhận, đang tải Zalo...');
+          setTimeout(refreshQrImage, 1500);
+          checkZaloStatus();
+        }
+      } catch (e) {
+        showToast('error', 'Lỗi: ' + e.message);
       }
     }
 

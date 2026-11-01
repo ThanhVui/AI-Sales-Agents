@@ -193,6 +193,14 @@ async def login_browser(background_tasks: BackgroundTasks):
     return {"status": "ok", "message": "Đang khởi động trình duyệt đăng nhập Zalo..."}
 
 
+@app.post("/api/dismiss-popup")
+async def dismiss_popup():
+    """Explicitly dismiss Zalo 'Đổi thiết bị' / 'Đã hiểu' popup and check login status."""
+    clicked = await zalo_agent.dismiss_popups()
+    logged = await zalo_agent.check_login_status()
+    return {"success": True, "clicked": clicked, "is_logged_in": logged}
+
+
 @app.post("/api/logout")
 async def logout_zalo():
     success = await zalo_agent.logout()

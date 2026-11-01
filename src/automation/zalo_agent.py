@@ -61,6 +61,35 @@ class ZaloBrowserAgent:
 
             return await self.check_login_status()
 
+    async def dismiss_popups(self) -> bool:
+        """Automatically dismiss any Zalo confirmation popups like 'Đổi thiết bị', 'Đã hiểu', notifications."""
+        if not self.page or self.page.is_closed():
+            return False
+        clicked = False
+        try:
+            # 1. "Đổi thiết bị" popup -> click "Đã hiểu"
+            elem_understood = await self.page.query_selector(
+                "button:has-text('Đã hiểu'), div[role='button']:has-text('Đã hiểu'), div:has-text('Đã hiểu'), span:has-text('Đã hiểu'), .btn:has-text('Đã hiểu')"
+            )
+            if elem_understood:
+                print("[ZaloBrowserAgent] Detected 'Đổi thiết bị' popup! Clicking 'Đã hiểu'...")
+                await elem_understood.click()
+                await asyncio.sleep(1.5)
+                clicked = True
+
+            # 2. Prompts like "Bỏ qua", "Để sau", "Không phải bây giờ"
+            elem_skip = await self.page.query_selector(
+                "button:has-text('Bỏ qua'), div:has-text('Bỏ qua'), button:has-text('Để sau'), button:has-text('Không phải bây giờ')"
+            )
+            if elem_skip:
+                print("[ZaloBrowserAgent] Detected prompt. Dismissing...")
+                await elem_skip.click()
+                await asyncio.sleep(0.5)
+                clicked = True
+        except Exception as e:
+            print(f"[ZaloBrowserAgent] Error in dismiss_popups: {e}")
+        return clicked
+
     async def check_login_status(self) -> bool:
         """Check if currently logged into Zalo Web."""
         if not self.page or self.page.is_closed():
@@ -70,12 +99,20 @@ class ZaloBrowserAgent:
         try:
             url = self.page.url
             if "chat.zalo.me" in url:
+                # First dismiss any blocking popups like 'Đổi thiết bị'
+                await self.dismiss_popups()
+
                 # Look for logged-in indicators
                 logged_in_elem = await self.page.query_selector(
                     "#contact-search-input, .main-tab__item, .nav__tabs__top, .avatar, [data-id='avatar'], .chat-box"
                 )
                 if logged_in_elem:
                     self.is_logged_in = True
+                    if self.qr_path.exists():
+                        try:
+                            self.qr_path.unlink()
+                        except Exception:
+                            pass
                     return True
 
             self.is_logged_in = False
