@@ -17,8 +17,24 @@ sys.path.insert(0, str(BASE_DIR))
 from src.database.session_sync import upload_session_to_cloud, download_session_from_cloud
 
 
-async def run_gui_login():
+async def run_gui_login(force_new: bool = False):
     """Launch visible browser on local Windows for instant QR scan without bot detection."""
+    from src.config import settings
+    import shutil
+    profile_path = settings.PROFILE_DIR
+
+    if not force_new and profile_path.exists() and (profile_path / "Default" / "Preferences").exists():
+        try:
+            choice = input("⚠️ Bạn đang có một tài khoản Zalo trên máy. Bạn có muốn ĐĂNG XUẤT để đổi sang tài khoản Zalo MỚI không? (y/N): ").strip().lower()
+            if choice in ('y', 'yes', 'c', 'co'):
+                force_new = True
+        except Exception:
+            pass
+
+    if force_new and profile_path.exists():
+        shutil.rmtree(profile_path, ignore_errors=True)
+        print("🗑️ Đã làm sạch phiên cũ để chuẩn bị quét mã QR cho tài khoản mới.")
+
     print("🚀 Đang khởi động trình duyệt Chrome trên máy tính của bạn...")
     try:
         from playwright.async_api import async_playwright
@@ -93,14 +109,18 @@ async def run_gui_login():
 def main():
     if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         print("Sử dụng:")
-        print("  python sync_session.py login       # Mở Chrome trên máy tính để quét QR và tự đồng bộ lên Cloud")
+        print("  python sync_session.py login       # Mở Chrome quét QR đăng nhập (tự đồng bộ lên Cloud)")
+        print("  python sync_session.py new         # XÓA TÀI KHOẢN CŨ và mở Chrome quét QR tài khoản Zalo MỚI")
         print("  python sync_session.py upload      # Sao lưu .zalo_profile lên Supabase Storage")
         print("  python sync_session.py download    # Tải .zalo_profile từ Supabase Storage về máy")
         return
 
     arg = sys.argv[1].lower().strip("-")
-    if arg in ("login", "dangnhap"):
-        asyncio.run(run_gui_login())
+    if arg in ("new", "switch", "logout", "doitaikhoan"):
+        asyncio.run(run_gui_login(force_new=True))
+    elif arg in ("login", "dangnhap"):
+        force = ("--new" in sys.argv or "-new" in sys.argv)
+        asyncio.run(run_gui_login(force_new=force))
     elif arg in ("upload", "backup", "saoluu"):
         print("🚀 Bắt đầu sao lưu phiên Zalo lên Supabase Storage...")
         success = upload_session_to_cloud()
