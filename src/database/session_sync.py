@@ -126,3 +126,4 @@ def download_session_from_cloud(force: bool = False) -> bool:
                 os.remove(temp_zip)
             except Exception:
                 pass
+
