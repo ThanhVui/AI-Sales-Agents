@@ -210,13 +210,18 @@ class ZaloBrowserAgent:
             # Wait for QR element with reasonable timeout
             qr_elem = None
             try:
-                qr_elem = await self.page.wait_for_selector(
-                    ".qrcode, .qrcode-img, canvas, .qr-container, div[data-id='qrcode'], .content-qr",
-                    timeout=8000
-                )
+                # Priority: specifically screenshot the SVG QR code element directly for 100% sharp scan
+                svg_elem = await self.page.query_selector(".qr-container svg")
+                if svg_elem:
+                    qr_elem = svg_elem
+                else:
+                    qr_elem = await self.page.wait_for_selector(
+                        ".qr-container svg, svg[viewBox='0 0 300 300'], .qr-container, .qrcode",
+                        timeout=8000
+                    )
             except Exception:
                 qr_elem = await self.page.query_selector(
-                    ".qrcode, .qrcode-img, canvas, .qr-container, div[data-id='qrcode'], .content-qr"
+                    ".qr-container svg, svg[viewBox='0 0 300 300'], .qr-container, .qrcode"
                 )
 
             if qr_elem:
