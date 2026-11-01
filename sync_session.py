@@ -58,8 +58,9 @@ async def run_gui_login(force_new: bool = False):
             )
 
             page = context.pages[0] if context.pages else await context.new_page()
-            print("🌐 Đang truy cập chat.zalo.me...")
-            await page.goto("https://chat.zalo.me")
+            login_url = "https://id.zalo.me/account?continue=https%3A%2F%2Fchat.zalo.me%2Findex.html"
+            print(f"🌐 Đang truy cập {login_url}...")
+            await page.goto(login_url)
             print("\n" + "="*60)
             print("👉 VUI LÒNG DÙNG ỨNG DỤNG ZALO TRÊN ĐIỆN THOẠI QUÉT MÃ QR TRÊN MÀN HÌNH")
             print("="*60 + "\n")
