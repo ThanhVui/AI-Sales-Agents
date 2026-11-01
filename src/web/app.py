@@ -105,15 +105,21 @@ async def backup_session(background_tasks: BackgroundTasks):
 
 
 @app.post("/api/session/restore")
-async def restore_session():
+async def restore_session(background_tasks: BackgroundTasks):
     """
-    Force restore Zalo session from Supabase Storage and re-initialize agent.
+    Restore Zalo session from Supabase Storage fast & non-blocking.
+    Downloads the archive synchronously (takes ~1s), then triggers agent initialize in background.
     """
     from src.database.session_sync import download_session_from_cloud
-    ok = download_session_from_cloud(force=True)
-    if ok:
-        await zalo_agent.initialize()
-    return {"success": ok, "message": "Đã khôi phục phiên Zalo từ Supabase Storage!" if ok else "Khôi phục thất bại"}
+    try:
+        ok = download_session_from_cloud(force=True)
+        if ok:
+            background_tasks.add_task(zalo_agent.initialize)
+            return {"success": True, "message": "Đã tải phiên Zalo từ Cloud! Đang khởi động kết nối trình duyệt trong nền..."}
+        else:
+            return {"success": False, "message": "Không tìm thấy file sao lưu trên Cloud hoặc tải thất bại."}
+    except Exception as e:
+        return {"success": False, "message": f"Lỗi khôi phục: {str(e)}"}
 
 
 @app.on_event("shutdown")

@@ -89,6 +89,12 @@
           <span>Sao lưu Zalo Cloud</span>
         </button>
 
+        <!-- Tải phiên Zalo từ Cloud Button -->
+        <button onclick="handleRestoreSession()" title="Tải phiên Zalo đã lưu trên Supabase Storage về Render" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-cloud-arrow-down text-blue-600"></i>
+          <span>Tải Zalo từ Cloud</span>
+        </button>
+
         <!-- Refresh Button -->
         <button onclick="checkZaloStatus(true)" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center gap-1.5">
           <i class="fa-solid fa-arrows-rotate"></i>
@@ -699,6 +705,8 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
     // Modal Helpers
     let qrPollInterval = null;
     let isFetchingQr = false;
+    let qrPollCount = 0;
+    const MAX_QR_POLL = 12; // Dừng sau 12 lần (~42 giây) để tiết kiệm triệt để RAM Render
 
     async function refreshQrImage() {
       if (isFetchingQr) return;
@@ -731,12 +739,14 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
       if (id === 'zaloQrModal' && qrPollInterval) {
         clearInterval(qrPollInterval);
         qrPollInterval = null;
+        qrPollCount = 0;
       }
     }
 
     function openZaloModal() {
       if (!isZaloLoggedIn) {
         // Reset modal state to spinner
+        qrPollCount = 0;
         document.getElementById('modalQrSpinner').classList.remove('hidden');
         document.getElementById('modalQrImg').classList.add('hidden');
         document.getElementById('modalQrStatus').innerText = 'Đang khởi động trình duyệt Zalo...';
@@ -747,10 +757,18 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         qrPollInterval = setInterval(() => {
           const modal = document.getElementById('zaloQrModal');
           if (modal && !modal.classList.contains('hidden') && !isZaloLoggedIn) {
+            qrPollCount++;
+            if (qrPollCount >= MAX_QR_POLL) {
+              clearInterval(qrPollInterval);
+              qrPollInterval = null;
+              document.getElementById('modalQrStatus').innerHTML = '<span class="text-amber-600 font-medium">Đã tạm dừng tải tự động để tiết kiệm RAM.</span> Bấm <b>Làm mới mã QR</b> bên dưới để tải tiếp.';
+              return;
+            }
             refreshQrImage();
           } else {
             clearInterval(qrPollInterval);
             qrPollInterval = null;
+            qrPollCount = 0;
           }
         }, 3500);
       } else {
@@ -963,13 +981,22 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
     }
 
     async function handleRestoreSession() {
-      showToast('info', 'Đang tải và giải nén phiên Zalo từ Supabase Storage...');
+      showToast('info', 'Đang kết nối Supabase và tải phiên Zalo về...');
       try {
         const res = await fetch('/api/session/restore', { method: 'POST' });
-        const data = await res.json();
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          if (res.ok) {
+            data = { success: true, message: 'Đã gửi lệnh khôi phục phiên Zalo thành công!' };
+          } else {
+            throw new Error('Máy chủ phản hồi mã ' + res.status);
+          }
+        }
         if (data.success) {
-          showPopupAlert('success', 'Khôi Phục Thành Công!', 'Đã khôi phục phiên Zalo từ Cloud!');
-          checkZaloStatus(true);
+          showPopupAlert('success', 'Đã Tải Phiên Zalo!', data.message || 'Đang khôi phục và kiểm tra trạng thái Zalo...');
+          setTimeout(() => checkZaloStatus(true), 3000);
         } else {
           showPopupAlert('warning', 'Khôi Phục Thất Bại', data.message || 'Không tìm thấy session trên Cloud');
         }
