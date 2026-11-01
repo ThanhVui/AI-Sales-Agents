@@ -1,4 +1,5 @@
 import os
+import shutil
 import asyncio
 import base64
 from typing import Dict, Any, Optional, Callable
@@ -69,12 +70,23 @@ class ZaloBrowserAgent:
         try:
             # 1. "Đổi thiết bị" popup -> click "Đã hiểu"
             elem_understood = await self.page.query_selector(
-                "button:has-text('Đã hiểu'), div[role='button']:has-text('Đã hiểu'), div:has-text('Đã hiểu'), span:has-text('Đã hiểu'), .btn:has-text('Đã hiểu')"
+                "button:has-text('Đã hiểu'), [role='button']:has-text('Đã hiểu'), .btn:has-text('Đã hiểu'), div[class*='btn']:has-text('Đã hiểu')"
             )
+            if not elem_understood:
+                try:
+                    loc = self.page.locator("text='Đã hiểu'")
+                    if await loc.count() > 0:
+                        elem_understood = loc.last
+                except Exception:
+                    pass
+
             if elem_understood:
                 print("[ZaloBrowserAgent] Detected 'Đổi thiết bị' popup! Clicking 'Đã hiểu'...")
-                await elem_understood.click()
-                await asyncio.sleep(1.5)
+                try:
+                    await elem_understood.click()
+                except Exception:
+                    await elem_understood.dispatch_event("click")
+                await asyncio.sleep(2)
                 clicked = True
 
             # 2. Prompts like "Bỏ qua", "Để sau", "Không phải bây giờ"
@@ -298,24 +310,106 @@ class ZaloBrowserAgent:
                 "note": "Gửi thành công qua Zalo Web"
             }
 
-    async def logout(self) -> bool:
-        """Logout current Zalo session."""
+    async def reset_session(self) -> bool:
+        """
+        Completely reset Zalo session:
+        Close browser, wipe local profile and cached cookies,
+        re-launch fresh browser on chat.zalo.me and generate a fresh QR code for a new account.
+        """
         async with self._lock:
             try:
+                print("[ZaloBrowserAgent] Completely wiping session to allow logging into a NEW Zalo account...")
+                self.is_logged_in = False
+
+                # 1. Close current page and context
                 if self.page and not self.page.is_closed():
                     try:
-                        await self.page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }")
+                        await self.page.close()
                     except Exception:
                         pass
-                    await self.context.clear_cookies()
-                    await self.page.goto("https://chat.zalo.me", wait_until="domcontentloaded")
-                    await asyncio.sleep(2)
-                    await self.capture_qr()
-                self.is_logged_in = False
+                self.page = None
+
+                if self.context:
+                    try:
+                        await self.context.close()
+                    except Exception:
+                        pass
+                    self.context = None
+
+                # 2. Delete local profile directory completely so NO old account remains
+                profile_path = settings.PROFILE_DIR
+                if profile_path.exists():
+                    try:
+                        shutil.rmtree(profile_path, ignore_errors=True)
+                        print("[ZaloBrowserAgent] Deleted old .zalo_profile successfully.")
+                    except Exception as e:
+                        print(f"[ZaloBrowserAgent] Note deleting profile: {e}")
+
+                # 3. Delete existing QR file
+                if self.qr_path.exists():
+                    try:
+                        self.qr_path.unlink()
+                    except Exception:
+                        pass
+
+                # 4. Relaunch fresh Chromium context
+                headless = settings.HEADLESS
+                if not self.pw:
+                    self.pw = await async_playwright().start()
+
+                os.makedirs(str(profile_path), exist_ok=True)
+                self.context = await self.pw.chromium.launch_persistent_context(
+                    user_data_dir=str(profile_path),
+                    headless=headless,
+                    viewport={"width": 1280, "height": 850},
+                    args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--no-first-run",
+                        "--disable-blink-features=AutomationControlled",
+                    ],
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+                )
+
+                pages = self.context.pages
+                self.page = pages[0] if pages else await self.context.new_page()
+
+                # 5. Navigate to Zalo Web
+                await self.page.goto("https://chat.zalo.me", wait_until="domcontentloaded", timeout=30000)
+                await asyncio.sleep(2.5)
+
+                # 6. Capture fresh QR code
+                try:
+                    qr_tab = await self.page.query_selector("a:has-text('VỚI MÃ QR'), div:has-text('VỚI MÃ QR'), .tab-item:has-text('QR')")
+                    if qr_tab:
+                        await qr_tab.click()
+                        await asyncio.sleep(0.5)
+                except Exception:
+                    pass
+
+                try:
+                    qr_elem = await self.page.wait_for_selector(
+                        ".qrcode, .qrcode-img, canvas, .qr-container, div[data-id='qrcode'], .content-qr",
+                        timeout=10000
+                    )
+                    if qr_elem:
+                        await qr_elem.screenshot(path=str(self.qr_path))
+                    else:
+                        await self.page.screenshot(path=str(self.qr_path))
+                except Exception:
+                    await self.page.screenshot(path=str(self.qr_path))
+
+                print(f"[ZaloBrowserAgent] Brand new QR code ready: {self.qr_path}")
                 return True
             except Exception as e:
-                print(f"[ZaloBrowserAgent] Logout error: {e}")
+                print(f"[ZaloBrowserAgent] Error resetting session: {e}")
                 return False
+
+    async def logout(self) -> bool:
+        """Logout current Zalo session and prepare fresh QR code."""
+        return await self.reset_session()
 
     async def close(self):
         """Close browser context cleanly."""

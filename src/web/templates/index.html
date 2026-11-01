@@ -627,13 +627,16 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
 
       <div class="mt-5 flex flex-col gap-2">
         <button onclick="handleDismissPopup()" class="ant-btn w-full py-2 px-3 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-circle-check"></i> Xác nhận "Đã hiểu" (Đổi thiết bị)
+          <i class="fa-solid fa-circle-check"></i> Xác nhận "Đã hiểu" (Tiếp tục tài khoản cũ)
+        </button>
+        <button onclick="handleResetForNewAccount()" class="ant-btn w-full py-2 px-3 rounded-md bg-red-600 hover:bg-red-500 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất & Hiện mã QR tài khoản khác
         </button>
         <div class="flex gap-2">
-          <button onclick="launchLoginBrowser()" class="ant-btn flex-1 py-2 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm">
+          <button onclick="launchLoginBrowser()" class="ant-btn flex-1 py-1.5 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm">
             <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới mã QR
           </button>
-          <button onclick="closeModal('zaloQrModal')" class="ant-btn py-2 px-3 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">
+          <button onclick="closeModal('zaloQrModal')" class="ant-btn py-1.5 px-3 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">
             Đóng
           </button>
         </div>
@@ -845,6 +848,41 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         }, 2000);
       } catch (e) {
         showPopupAlert('error', 'Lỗi khởi động', String(e));
+      }
+    }
+
+    async function handleResetForNewAccount() {
+      const confirm = await Swal.fire({
+        title: 'Đăng nhập tài khoản Zalo khác?',
+        text: 'Hệ thống sẽ xóa phiên Zalo cũ trên Render và tạo mã QR mới để bạn quét tài khoản mới.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Đồng ý tạo mã QR mới',
+        cancelButtonText: 'Hủy',
+        customClass: {
+          popup: 'swal-ant',
+          confirmButton: 'ant-btn px-4 py-2 rounded-md bg-red-600 text-white text-xs font-semibold mr-2',
+          cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+        },
+        buttonsStyling: false
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        showToast('info', 'Đang xóa phiên cũ và tạo mã QR mới...');
+        document.getElementById('modalQrStatus').innerText = 'Đang khởi động lại trình duyệt sạch...';
+        document.getElementById('modalQrImg').src = '/api/qr-image?t=' + Date.now();
+        const res = await fetch('/api/logout', { method: 'POST' });
+        const data = await res.json();
+        showToast('success', data.message || 'Đã tạo mã QR mới!');
+        setTimeout(() => {
+          refreshQrImage();
+          document.getElementById('modalQrStatus').innerText = 'Quét mã QR bằng ứng dụng Zalo trên điện thoại';
+          checkZaloStatus();
+        }, 2000);
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi reset', String(e));
       }
     }
 
