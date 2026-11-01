@@ -19,6 +19,7 @@ class ZaloBrowserAgent:
         self.is_logged_in: bool = False
         self._lock = asyncio.Lock()
         self.qr_path = settings.BASE_DIR / "qr_code.png"
+        self._last_capture_time: float = 0
 
     async def initialize(self, headless: Optional[bool] = None) -> bool:
         """Initialize browser context with persistent profile directory."""
@@ -45,6 +46,11 @@ class ZaloBrowserAgent:
                     "--disable-dev-shm-usage",
                     "--disable-gpu",
                     "--no-first-run",
+                    "--no-zygote",
+                    "--disable-extensions",
+                    "--disable-background-networking",
+                    "--disable-renderer-backgrounding",
+                    "--js-flags=--max-old-space-size=128",
                     "--disable-blink-features=AutomationControlled",
                 ],
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -135,6 +141,11 @@ class ZaloBrowserAgent:
 
     async def capture_qr(self) -> Optional[str]:
         """Capture QR code from login screen and save to disk."""
+        now = asyncio.get_event_loop().time()
+        # Throttle: if already captured less than 5s ago and file exists, return immediately
+        if (now - self._last_capture_time) < 5.0 and self.qr_path.exists() and self.qr_path.stat().st_size > 500:
+            return str(self.qr_path)
+
         if not self.page or self.page.is_closed():
             if not self._lock.locked():
                 await self.initialize()
@@ -192,6 +203,7 @@ class ZaloBrowserAgent:
                     await self.page.screenshot(path=str(self.qr_path))
 
             if self.qr_path.exists():
+                self._last_capture_time = asyncio.get_event_loop().time()
                 print(f"[ZaloBrowserAgent] Captured QR screenshot successfully: {self.qr_path} ({os.path.getsize(self.qr_path)} bytes)")
                 return str(self.qr_path)
             return None
@@ -368,6 +380,11 @@ class ZaloBrowserAgent:
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
                         "--no-first-run",
+                        "--no-zygote",
+                        "--disable-extensions",
+                        "--disable-background-networking",
+                        "--disable-renderer-backgrounding",
+                        "--js-flags=--max-old-space-size=128",
                         "--disable-blink-features=AutomationControlled",
                     ],
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
