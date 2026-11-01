@@ -148,11 +148,11 @@
             </div>
 
             <!-- Template Textarea -->
-            <textarea id="templateText" ondrop="handleDrop(event)" ondragover="event.preventDefault()" rows="4" class="ant-input w-full p-3 text-xs text-gray-800 leading-relaxed font-sans">Anh [Tên Khách Hàng] ơi! Em đang có một khách hàng muốn mua hoặc THUÊ căn [Tên Căn Hộ].
+            <textarea id="templateText" ondrop="handleDrop(event)" ondragover="event.preventDefault()" rows="5" class="ant-input w-full p-3 text-xs text-gray-800 leading-relaxed font-sans">Chào Anh/Chị! Em đang có một khách hàng muốn mua hoặc thuê căn [Tên Căn Hộ].
 
 Mình có thể BÁN hoặc CHO THUÊ không ạ?  
-Nếu có, hãy cho em biết giá bán nhé!  
-Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
+Nếu có, hãy cho em biết giá bán hoặc thuê nhé!  
+Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</textarea>
           </div>
 
           <!-- Live Preview Box -->
@@ -350,18 +350,44 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
       </div>
 
       <!-- Search & Filters -->
-      <div class="mb-3.5 flex flex-wrap items-center gap-3">
-        <div class="relative flex-1 min-w-[280px]">
+      <div class="mb-3.5 flex flex-wrap items-center gap-2.5 bg-gray-50/70 p-2.5 rounded-lg border border-gray-200">
+        <div class="relative flex-1 min-w-[240px]">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-          <input type="text" id="custSearch" oninput="currentPage = 1; renderTable()" placeholder="Tìm kiếm nhanh theo tên, căn hộ, số điện thoại, ghi chú..." class="ant-input w-full pl-8 pr-3 py-1.5 text-xs text-gray-800 bg-white">
+          <input type="text" id="custSearch" oninput="currentPage = 1; renderTable()" placeholder="Tìm kiếm nhanh theo tên, căn hộ, SĐT, ghi chú..." class="ant-input w-full pl-8 pr-3 py-1.5 text-xs text-gray-800 bg-white">
         </div>
-        <select id="statusFilter" onchange="currentPage = 1; renderTable()" class="ant-input px-3 py-1.5 text-xs text-gray-700 bg-white">
-          <option value="">Tất cả trạng thái</option>
-          <option value="Chưa gửi">Chưa gửi</option>
-          <option value="Đã gửi">Đã gửi</option>
-          <option value="Chưa đăng ký Zalo">Chưa ĐK Zalo</option>
-          <option value="Lỗi">Lỗi</option>
-        </select>
+
+        <!-- Bộ Lọc Tòa (Block) -->
+        <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+          <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-regular fa-building text-blue-600 mr-1"></i>Tòa:</span>
+          <select id="blockFilter" onchange="onBlockFilterChange()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
+            <option value="">Tất cả Tòa</option>
+          </select>
+        </div>
+
+        <!-- Bộ Lọc Trục Căn (Axis) -->
+        <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+          <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-solid fa-compass text-amber-600 mr-1"></i>Trục:</span>
+          <select id="axisFilter" onchange="currentPage = 1; renderTable()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
+            <option value="">Tất cả Trục</option>
+          </select>
+        </div>
+
+        <!-- Bộ Lọc Trạng Thái -->
+        <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
+          <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i>Trạng thái:</span>
+          <select id="statusFilter" onchange="currentPage = 1; renderTable()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
+            <option value="">Tất cả</option>
+            <option value="Chưa gửi">Chưa gửi</option>
+            <option value="Đã gửi">Đã gửi</option>
+            <option value="Chưa đăng ký Zalo">Chưa ĐK Zalo</option>
+            <option value="Lỗi">Lỗi</option>
+          </select>
+        </div>
+
+        <!-- Nút Reset Lọc -->
+        <button onclick="resetFilters()" title="Đặt lại tất cả bộ lọc" class="ant-btn px-2.5 py-1.5 rounded text-xs bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 flex items-center gap-1">
+          <i class="fa-solid fa-rotate-left text-gray-400"></i> Xóa lọc
+        </button>
       </div>
 
       <!-- Customer Data Table (Full Width) -->
@@ -1136,6 +1162,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         const data = await res.json();
         if (data.customers) {
           customers = data.customers;
+          updateBlockAxisDropdowns();
           renderTable();
           updatePreview();
           showToast('success', 'Đã nạp 2.290 căn Masteri & tự động đồng bộ Supabase');
@@ -1310,30 +1337,107 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
       container.innerHTML = html;
     }
 
-    // Render Table with Search, Status filtering, Pagination and Inline Note Editing
+    // Update Block & Axis filter dropdowns dynamically from customer list
+    function updateBlockAxisDropdowns() {
+      const blockSelect = document.getElementById('blockFilter');
+      const axisSelect = document.getElementById('axisFilter');
+      if (!blockSelect || !axisSelect) return;
+
+      const currentBlock = blockSelect.value;
+      const currentAxis = axisSelect.value;
+
+      // Extract unique blocks
+      const blockSet = new Set();
+      customers.forEach(c => {
+        const b = String(c.block || '').trim();
+        if (b) blockSet.add(b);
+      });
+      const sortedBlocks = Array.from(blockSet).sort();
+
+      blockSelect.innerHTML = '<option value="">Tất cả Tòa</option>' + 
+        sortedBlocks.map(b => `<option value="${escapeHtml(b)}" ${b === currentBlock ? 'selected' : ''}>Tòa ${escapeHtml(b)}</option>`).join('');
+
+      // Extract unique axes (filtered by block if selected)
+      const axisSet = new Set();
+      customers.forEach(c => {
+        const b = String(c.block || '').trim();
+        const a = String(c.axis || '').trim();
+        if (a && (!currentBlock || b === currentBlock)) {
+          axisSet.add(a);
+        }
+      });
+      const sortedAxes = Array.from(axisSet).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
+
+      axisSelect.innerHTML = '<option value="">Tất cả Trục</option>' + 
+        sortedAxes.map(a => `<option value="${escapeHtml(a)}" ${a === currentAxis ? 'selected' : ''}>Trục ${escapeHtml(a)}</option>`).join('');
+    }
+
+    function onBlockFilterChange() {
+      updateBlockAxisDropdowns();
+      currentPage = 1;
+      renderTable();
+    }
+
+    function resetFilters() {
+      document.getElementById('custSearch').value = '';
+      document.getElementById('blockFilter').value = '';
+      document.getElementById('axisFilter').value = '';
+      document.getElementById('statusFilter').value = '';
+      updateBlockAxisDropdowns();
+      currentPage = 1;
+      renderTable();
+      showToast('info', 'Đã đặt lại bộ lọc');
+    }
+
+    // Get current filtered customer list (matching search query, block, axis, status)
+    function getFilteredCustomers() {
+      const query = (document.getElementById('custSearch')?.value || '').toLowerCase().trim();
+      const statusFilter = document.getElementById('statusFilter')?.value || '';
+      const blockFilter = (document.getElementById('blockFilter')?.value || '').trim().toLowerCase();
+      const axisFilter = (document.getElementById('axisFilter')?.value || '').trim().toLowerCase();
+
+      return customers.filter(c => {
+        // Status filter
+        if (statusFilter && (c.status || 'Chưa gửi') !== statusFilter) return false;
+
+        // Block filter
+        if (blockFilter) {
+          const b = String(c.block || '').trim().toLowerCase();
+          if (b !== blockFilter) return false;
+        }
+
+        // Axis filter
+        if (axisFilter) {
+          const a = String(c.axis || '').trim().toLowerCase();
+          if (a !== axisFilter) return false;
+        }
+
+        // Search text
+        if (!query) return true;
+        const n = (c.name || '').toLowerCase();
+        const apt = (c.apartment || '').toLowerCase();
+        const p = (c.phone || '').toLowerCase();
+        const note = (c.note || '').toLowerCase();
+        const blk = (c.block || '').toLowerCase();
+        const axs = (c.axis || '').toLowerCase();
+        return n.includes(query) || apt.includes(query) || p.includes(query) || note.includes(query) || blk.includes(query) || axs.includes(query);
+      });
+    }
+
+    // Render Table with Search, Status, Block, Axis filtering, Pagination and Inline Note Editing
     function renderTable() {
       const tbody = document.getElementById('custTableBody');
       const badge = document.getElementById('custCountBadge');
       const info = document.getElementById('tableShowingInfo');
-      const query = (document.getElementById('custSearch').value || '').toLowerCase().trim();
-      const statusFilter = document.getElementById('statusFilter').value;
 
-      badge.innerText = `${customers.length.toLocaleString()} khách hàng`;
+      const filtered = getFilteredCustomers();
+      const totalFiltered = filtered.length;
+
+      badge.innerText = `${totalFiltered.toLocaleString()} / ${customers.length.toLocaleString()} khách hàng`;
       updateMetricsDisplay();
 
-      const filtered = customers.filter(c => {
-        if (statusFilter && (c.status || 'Chưa gửi') !== statusFilter) return false;
-        if (!query) return true;
-        const n = (c.name || '').toLowerCase();
-        const a = (c.apartment || '').toLowerCase();
-        const p = (c.phone || '').toLowerCase();
-        const note = (c.note || '').toLowerCase();
-        return n.includes(query) || a.includes(query) || p.includes(query) || note.includes(query);
-      });
-
-      const totalFiltered = filtered.length;
       if (totalFiltered === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-10 text-gray-400">Không tìm thấy khách hàng phù hợp.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-10 text-gray-400">Không tìm thấy khách hàng phù hợp với bộ lọc.</td></tr>';
         info.innerText = 'Đang hiển thị 0 khách hàng';
         renderPagination(0);
         return;
@@ -1347,7 +1451,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
       const endIndex = Math.min(startIndex + pageSize, totalFiltered);
       const pageItems = filtered.slice(startIndex, endIndex);
 
-      info.innerText = `Đang hiển thị ${startIndex + 1} - ${endIndex} trong tổng số ${totalFiltered.toLocaleString()} khách hàng`;
+      info.innerText = `Đang hiển thị ${startIndex + 1} - ${endIndex} trong tổng số ${totalFiltered.toLocaleString()} khách hàng (đã lọc)`;
       renderPagination(totalFiltered);
 
       let html = '';
@@ -1612,6 +1716,32 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         return;
       }
 
+      // Lấy danh sách khách hàng ĐÃ ĐƯỢC LỌC (nếu đang lọc Tòa, Trục, Trạng thái thì chỉ gửi cho nhóm đó)
+      const targetCustomers = getFilteredCustomers();
+      if (targetCustomers.length === 0) {
+        showPopupAlert('warning', 'Không Có Khách Hàng', 'Bộ lọc hiện tại không tìm thấy khách hàng nào để gửi!');
+        return;
+      }
+
+      const isFiltered = targetCustomers.length < customers.length;
+      if (!testOnly && isFiltered) {
+        const confirm = await Swal.fire({
+          title: 'Xác nhận gửi theo bộ lọc?',
+          html: `Bạn đang áp dụng bộ lọc: Chiến dịch sẽ <b>chỉ gửi cho ${targetCustomers.toLocaleString()} khách hàng</b> thỏa mãn bộ lọc (trên tổng số ${customers.length.toLocaleString()} khách).`,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Bắt đầu gửi ngay',
+          cancelButtonText: 'Xem lại',
+          customClass: {
+            popup: 'swal-ant',
+            confirmButton: 'ant-btn px-4 py-2 rounded-md bg-blue-600 text-white text-xs font-semibold mr-2',
+            cancelButton: 'ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium'
+          },
+          buttonsStyling: false
+        });
+        if (!confirm.isConfirmed) return;
+      }
+
       const template = document.getElementById('templateText').value.trim();
       const isScheduleMode = document.getElementById('scheduleModeToggle').checked;
 
@@ -1644,7 +1774,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            customers,
+            customers: targetCustomers,
             template,
             schedule_config: scheduleConfig,
             test_only: testOnly
@@ -1652,7 +1782,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         });
         const data = await res.json();
         if (data.success) {
-          showToast('success', testOnly ? 'Đã bắt đầu gửi thử nghiệm (0901514312)!' : 'Đã kích hoạt chiến dịch an toàn!');
+          showToast('success', testOnly ? 'Đã bắt đầu gửi thử nghiệm (0901514312)!' : `Đã kích hoạt chiến dịch cho ${targetCustomers.length.toLocaleString()} khách!`);
         } else {
           showPopupAlert('warning', 'Không thể bắt đầu', data.message);
         }
@@ -1805,6 +1935,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         const data = await res.json();
         if (data.customers && data.customers.length > 0) {
           customers = data.customers;
+          updateBlockAxisDropdowns();
           renderTable();
           updatePreview();
         } else {
