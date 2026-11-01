@@ -20,6 +20,28 @@ class ZaloBrowserAgent:
         self._lock = asyncio.Lock()
         self.qr_path = settings.BASE_DIR / "qr_code.png"
         self._last_capture_time: float = 0
+        self._latest_api_qr_bytes: Optional[bytes] = None
+
+    def _setup_page_listeners(self, page: Page):
+        """Listen to Zalo server network responses to grab exact official QR PNG data."""
+        async def on_response(res):
+            if "qr/generate" in res.url:
+                try:
+                    data = await res.json()
+                    img_data = data.get("data", {}).get("image", "")
+                    if img_data and "base64," in img_data:
+                        b64_str = img_data.split("base64,")[1]
+                        raw_bytes = base64.b64decode(b64_str)
+                        self._latest_api_qr_bytes = raw_bytes
+                        # Save directly to qr_code.png
+                        with open(self.qr_path, "wb") as f:
+                            f.write(raw_bytes)
+                        self._last_capture_time = asyncio.get_event_loop().time()
+                        print(f"[ZaloBrowserAgent] ✅ Intercepted official 100% genuine Zalo QR PNG ({len(raw_bytes)} bytes)!")
+                except Exception as e:
+                    print(f"[ZaloBrowserAgent] Error intercepting QR: {e}")
+
+        page.on("response", on_response)
 
     async def initialize(self, headless: Optional[bool] = None) -> bool:
         """Initialize browser context with persistent profile directory."""
@@ -65,6 +87,7 @@ class ZaloBrowserAgent:
 
             pages = self.context.pages
             self.page = pages[0] if pages else await self.context.new_page()
+            self._setup_page_listeners(self.page)
 
             # Navigate to Zalo Web
             try:
@@ -206,6 +229,12 @@ class ZaloBrowserAgent:
                     await asyncio.sleep(1.5)
             except Exception as e:
                 print(f"[ZaloBrowserAgent] Note refreshing expired QR: {e}")
+
+            # Wait briefly if official API QR image was just intercepted
+            if self._latest_api_qr_bytes and self.qr_path.exists() and self.qr_path.stat().st_size > 500:
+                self._last_capture_time = asyncio.get_event_loop().time()
+                print(f"[ZaloBrowserAgent] Using intercepted genuine official Zalo QR PNG ({self.qr_path.stat().st_size} bytes)")
+                return str(self.qr_path)
 
             # Wait for QR element with reasonable timeout
             qr_elem = None
@@ -431,6 +460,7 @@ class ZaloBrowserAgent:
 
                 pages = self.context.pages
                 self.page = pages[0] if pages else await self.context.new_page()
+                self._setup_page_listeners(self.page)
 
                 # 5. Navigate to Zalo Web
                 await self.page.goto("https://chat.zalo.me", wait_until="domcontentloaded", timeout=30000)
