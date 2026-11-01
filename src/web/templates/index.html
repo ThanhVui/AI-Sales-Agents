@@ -83,6 +83,12 @@
           <i class="fa-solid fa-qrcode ml-1 text-gray-400"></i>
         </div>
 
+        <!-- Sao lưu Zalo Cloud Button -->
+        <button onclick="handleBackupSession()" title="Sao lưu phiên Zalo lên Supabase Storage để Render tự động nhận" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i>
+          <span>Sao lưu Zalo Cloud</span>
+        </button>
+
         <!-- Refresh Button -->
         <button onclick="checkZaloStatus(true)" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center gap-1.5">
           <i class="fa-solid fa-arrows-rotate"></i>
@@ -627,6 +633,19 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
           Đóng
         </button>
       </div>
+
+      <!-- Cloud Storage Sync Buttons -->
+      <div class="mt-4 pt-3 border-t border-gray-200 text-left">
+        <span class="text-[11px] font-semibold text-gray-500 uppercase block mb-2">Đồng Bộ Cloud (Supabase Storage):</span>
+        <div class="flex flex-col gap-1.5">
+          <button onclick="handleBackupSession()" class="ant-btn w-full py-1.5 px-3 rounded text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-1.5 font-medium">
+            <i class="fa-solid fa-cloud-arrow-up text-emerald-600"></i> Sao lưu phiên Zalo lên Cloud
+          </button>
+          <button onclick="handleRestoreSession()" class="ant-btn w-full py-1.5 px-3 rounded text-xs bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-1.5 font-medium">
+            <i class="fa-solid fa-cloud-arrow-down text-blue-600"></i> Tải phiên Zalo từ Cloud về máy
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -806,6 +825,34 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         checkZaloStatus();
       } catch (e) {
         showPopupAlert('error', 'Lỗi đăng xuất', String(e));
+      }
+    }
+
+    // Cloud Session Backup & Restore (Supabase Storage)
+    async function handleBackupSession() {
+      showToast('info', 'Đang nén và sao lưu phiên Zalo lên Supabase Storage...');
+      try {
+        const res = await fetch('/api/session/backup', { method: 'POST' });
+        const data = await res.json();
+        showPopupAlert('success', 'Đã Sao Lưu Lên Cloud!', 'Phiên Zalo đã được lưu an toàn trên Supabase Storage. Khi bạn deploy lên Render, hệ thống sẽ tự động đăng nhập!');
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi sao lưu', String(e));
+      }
+    }
+
+    async function handleRestoreSession() {
+      showToast('info', 'Đang tải và giải nén phiên Zalo từ Supabase Storage...');
+      try {
+        const res = await fetch('/api/session/restore', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          showPopupAlert('success', 'Khôi Phục Thành Công!', 'Đã khôi phục phiên Zalo từ Cloud!');
+          checkZaloStatus(true);
+        } else {
+          showPopupAlert('warning', 'Khôi Phục Thất Bại', data.message || 'Không tìm thấy session trên Cloud');
+        }
+      } catch (e) {
+        showPopupAlert('error', 'Lỗi khôi phục', String(e));
       }
     }
 

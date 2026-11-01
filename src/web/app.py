@@ -72,8 +72,37 @@ class BatchStartRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Start headless browser context on server boot if needed."""
+    # Auto-restore Zalo session from Supabase Storage if local profile is missing (e.g. on fresh Render container)
+    try:
+        from src.database.session_sync import download_session_from_cloud
+        download_session_from_cloud(force=False)
+    except Exception as e:
+        print(f"[Startup] Error checking cloud session: {e}")
+
     print("[Startup] Initializing Zalo Browser Agent in background...")
     asyncio.create_task(zalo_agent.initialize())
+
+
+@app.post("/api/session/backup")
+async def backup_session(background_tasks: BackgroundTasks):
+    """
+    Backup current Zalo session (.zalo_profile) to Supabase Storage.
+    """
+    from src.database.session_sync import upload_session_to_cloud
+    background_tasks.add_task(upload_session_to_cloud)
+    return {"success": True, "message": "Đang sao lưu phiên Zalo lên Supabase Storage trong nền..."}
+
+
+@app.post("/api/session/restore")
+async def restore_session():
+    """
+    Force restore Zalo session from Supabase Storage and re-initialize agent.
+    """
+    from src.database.session_sync import download_session_from_cloud
+    ok = download_session_from_cloud(force=True)
+    if ok:
+        await zalo_agent.initialize()
+    return {"success": ok, "message": "Đã khôi phục phiên Zalo từ Supabase Storage!" if ok else "Khôi phục thất bại"}
 
 
 @app.on_event("shutdown")

@@ -5,6 +5,7 @@
 # Zalo Session & Browser Data (Keep private!)
 .zalo_profile/
 qr_code.png
+*.zip
 
 # Python cache & artifacts
 __pycache__/
