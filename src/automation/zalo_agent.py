@@ -42,6 +42,8 @@ class ZaloBrowserAgent:
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--no-first-run",
                     "--disable-blink-features=AutomationControlled",
                 ],
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -85,16 +87,65 @@ class ZaloBrowserAgent:
     async def capture_qr(self) -> Optional[str]:
         """Capture QR code from login screen and save to disk."""
         if not self.page or self.page.is_closed():
+            if not self._lock.locked():
+                await self.initialize()
+            else:
+                return None
+
+        if not self.page or self.page.is_closed():
             return None
 
         try:
-            # Check if QR container is present
-            qr_elem = await self.page.query_selector(".qrcode, .qr-container, .wrapper-page, canvas, img.qrcode-img")
+            # If already logged in, no need to show QR
+            if await self.check_login_status():
+                if self.qr_path.exists():
+                    try:
+                        self.qr_path.unlink()
+                    except Exception:
+                        pass
+                return None
+
+            # Ensure we are on chat.zalo.me
+            current_url = self.page.url
+            if "chat.zalo.me" not in current_url:
+                await self.page.goto("https://chat.zalo.me", wait_until="domcontentloaded", timeout=20000)
+                await asyncio.sleep(2)
+
+            # Switch to QR tab if available
+            try:
+                qr_tab = await self.page.query_selector("a:has-text('VỚI MÃ QR'), div:has-text('VỚI MÃ QR'), .tab-item:has-text('QR')")
+                if qr_tab:
+                    await qr_tab.click()
+                    await asyncio.sleep(0.5)
+            except Exception:
+                pass
+
+            # Wait for QR element with reasonable timeout
+            qr_elem = None
+            try:
+                qr_elem = await self.page.wait_for_selector(
+                    ".qrcode, .qrcode-img, canvas, .qr-container, div[data-id='qrcode'], .content-qr",
+                    timeout=8000
+                )
+            except Exception:
+                qr_elem = await self.page.query_selector(
+                    ".qrcode, .qrcode-img, canvas, .qr-container, div[data-id='qrcode'], .content-qr"
+                )
+
             if qr_elem:
                 await qr_elem.screenshot(path=str(self.qr_path))
             else:
-                await self.page.screenshot(path=str(self.qr_path))
-            return str(self.qr_path)
+                # Fallback to screenshotting the main login box or viewport
+                card_elem = await self.page.query_selector(".wrapper-page, .body-login, .banner-login, #app")
+                if card_elem:
+                    await card_elem.screenshot(path=str(self.qr_path))
+                else:
+                    await self.page.screenshot(path=str(self.qr_path))
+
+            if self.qr_path.exists():
+                print(f"[ZaloBrowserAgent] Captured QR screenshot successfully: {self.qr_path} ({os.path.getsize(self.qr_path)} bytes)")
+                return str(self.qr_path)
+            return None
         except Exception as e:
             print(f"[ZaloBrowserAgent] Failed to capture QR: {e}")
             return None

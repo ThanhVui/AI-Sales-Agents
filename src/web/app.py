@@ -3,7 +3,7 @@ import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Response
 from pydantic import BaseModel
 import openpyxl
 
@@ -137,16 +137,59 @@ async def get_system_status():
 @app.get("/api/qr-image")
 async def get_qr_image():
     qr_path = zalo_agent.qr_path
-    if not qr_path.exists():
+
+    # If browser is not running or closed, boot it up
+    if not zalo_agent.page or zalo_agent.page.is_closed():
+        await zalo_agent.initialize()
+
+    # Capture if missing, empty or older than 20 seconds
+    need_capture = False
+    if not qr_path.exists() or qr_path.stat().st_size < 500:
+        need_capture = True
+    elif (asyncio.get_event_loop().time() - os.path.getmtime(qr_path)) > 20:
+        need_capture = True
+
+    if need_capture:
         await zalo_agent.capture_qr()
-    if qr_path.exists():
-        return FileResponse(str(qr_path), media_type="image/png")
-    return Response(status_code=204)
+
+    if qr_path.exists() and qr_path.stat().st_size > 500:
+        return FileResponse(
+            str(qr_path),
+            media_type="image/png",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
+
+    # Clean SVG fallback so browser never displays broken image icon [x]
+    svg_fallback = """<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+      <rect width="220" height="220" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1.5"/>
+      <circle cx="110" cy="85" r="26" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="75 35" stroke-linecap="round">
+        <animateTransform attributeName="transform" type="rotate" from="0 110 85" to="360 110 85" dur="1s" repeatCount="indefinite"/>
+      </circle>
+      <text x="110" y="140" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="12" font-weight="600" fill="#1e293b">Đang tạo mã QR...</text>
+      <text x="110" y="160" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif" font-size="11" fill="#64748b">Vui lòng đợi giây lát</text>
+    </svg>"""
+    return Response(
+        content=svg_fallback,
+        media_type="image/svg+xml",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
 
 
 @app.post("/api/login-browser")
 async def login_browser(background_tasks: BackgroundTasks):
-    background_tasks.add_task(zalo_agent.initialize, False)
+    async def _init_and_capture():
+        await zalo_agent.initialize()
+        await zalo_agent.capture_qr()
+
+    background_tasks.add_task(_init_and_capture)
     return {"status": "ok", "message": "Đang khởi động trình duyệt đăng nhập Zalo..."}
 
 

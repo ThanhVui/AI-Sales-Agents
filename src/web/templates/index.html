@@ -621,8 +621,8 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
       <p class="text-xs text-gray-500 mb-4">Mở ứng dụng Zalo trên điện thoại và quét mã QR</p>
 
       <div class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-200 min-h-[220px]">
-        <img id="modalQrImg" class="max-w-[200px] h-auto rounded border border-gray-300 shadow-sm" alt="Zalo QR Code" />
-        <p id="modalQrStatus" class="text-xs text-gray-500 mt-3 font-medium">Đang tải mã QR...</p>
+        <img id="modalQrImg" class="max-w-[200px] h-auto rounded border border-gray-300 shadow-sm" alt="Zalo QR Code" onerror="setTimeout(refreshQrImage, 2000)" />
+        <p id="modalQrStatus" class="text-xs text-gray-500 mt-3 font-medium">Quét mã QR bằng ứng dụng Zalo trên điện thoại</p>
       </div>
 
       <div class="mt-5 flex gap-2">
@@ -684,13 +684,37 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
     }
 
     // Modal Helpers
+    let qrPollInterval = null;
+    function refreshQrImage() {
+      const img = document.getElementById('modalQrImg');
+      if (img) {
+        img.src = '/api/qr-image?t=' + Date.now();
+      }
+    }
+
     function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+      if (id === 'zaloQrModal' && qrPollInterval) {
+        clearInterval(qrPollInterval);
+        qrPollInterval = null;
+      }
+    }
 
     function openZaloModal() {
       if (!isZaloLoggedIn) {
-        document.getElementById('modalQrImg').src = '/api/qr-image?t=' + Date.now();
+        refreshQrImage();
         openModal('zaloQrModal');
+        if (qrPollInterval) clearInterval(qrPollInterval);
+        qrPollInterval = setInterval(() => {
+          const modal = document.getElementById('zaloQrModal');
+          if (modal && !modal.classList.contains('hidden') && !isZaloLoggedIn) {
+            refreshQrImage();
+          } else {
+            clearInterval(qrPollInterval);
+            qrPollInterval = null;
+          }
+        }, 4000);
       } else {
         showToast('info', 'Zalo Web đã đăng nhập và đang hoạt động!');
       }
@@ -788,13 +812,14 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
 
     async function launchLoginBrowser() {
       try {
-        showToast('info', 'Đang tạo mã QR đăng nhập Zalo...');
-        const res = await fetch('/api/login-browser', { method: 'POST' });
+        showToast('info', 'Đang tạo mã QR đăng nhập Zalo mới...');
+        document.getElementById('modalQrStatus').innerText = 'Đang khởi động trình duyệt...';
+        await fetch('/api/login-browser', { method: 'POST' });
         setTimeout(() => {
-          document.getElementById('modalQrImg').src = '/api/qr-image?t=' + Date.now();
+          refreshQrImage();
           document.getElementById('modalQrStatus').innerText = 'Quét mã QR bằng ứng dụng Zalo trên điện thoại';
           checkZaloStatus();
-        }, 3000);
+        }, 2000);
       } catch (e) {
         showPopupAlert('error', 'Lỗi khởi động', String(e));
       }
