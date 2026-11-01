@@ -823,6 +823,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
         const data = await res.json();
         showToast('success', data.message || 'Đã đăng xuất Zalo');
         checkZaloStatus();
+        setTimeout(() => openZaloModal(), 800);
       } catch (e) {
         showPopupAlert('error', 'Lỗi đăng xuất', String(e));
       }

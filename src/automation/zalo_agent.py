@@ -215,10 +215,14 @@ class ZaloBrowserAgent:
         async with self._lock:
             try:
                 if self.page and not self.page.is_closed():
-                    await self.page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }")
-                    cookies = await self.context.cookies()
+                    try:
+                        await self.page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }")
+                    except Exception:
+                        pass
                     await self.context.clear_cookies()
                     await self.page.goto("https://chat.zalo.me", wait_until="domcontentloaded")
+                    await asyncio.sleep(2)
+                    await self.capture_qr()
                 self.is_logged_in = False
                 return True
             except Exception as e:
