@@ -147,8 +147,14 @@ async def get_system_status(check: bool = False):
 async def get_qr_image():
     qr_path = zalo_agent.qr_path
 
-    # If QR file exists and is valid, serve it immediately
+    # Check if existing QR file is valid and fresh (less than 35 seconds old)
+    file_is_fresh = False
     if qr_path.exists() and qr_path.stat().st_size > 500:
+        file_age = asyncio.get_event_loop().time() - os.path.getmtime(qr_path)
+        if file_age < 35.0:
+            file_is_fresh = True
+
+    if file_is_fresh:
         return FileResponse(
             str(qr_path),
             media_type="image/png",
@@ -159,7 +165,7 @@ async def get_qr_image():
             }
         )
 
-    # If QR is not ready, trigger capture in background without blocking this HTTP request
+    # If QR is missing or older than 35s, trigger capture in background without blocking
     if not zalo_agent._lock.locked():
         asyncio.create_task(zalo_agent.capture_qr())
 

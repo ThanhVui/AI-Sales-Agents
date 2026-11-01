@@ -626,7 +626,7 @@ Em xin cảm ơn và chúc Anh có một ngày thật tuyệt vời!</textarea>
           <span class="text-xs font-semibold text-gray-700">Đang khởi tạo mã QR...</span>
           <span class="text-[11px] text-gray-400 mt-1">Vui lòng đợi giây lát</span>
         </div>
-        <img id="modalQrImg" class="hidden max-w-[200px] h-auto rounded border border-gray-300 shadow-sm" alt="Zalo QR Code" />
+        <img id="modalQrImg" onclick="launchLoginBrowser()" title="Bấm vào ảnh để làm mới mã QR" class="hidden max-w-[200px] h-auto rounded border border-gray-300 shadow-sm cursor-pointer hover:opacity-90 transition" alt="Zalo QR Code" />
         <p id="modalQrStatus" class="text-xs text-gray-500 mt-3 font-medium">Quét mã QR bằng ứng dụng Zalo trên điện thoại</p>
       </div>
 

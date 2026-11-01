@@ -453,23 +453,35 @@ class ZaloBrowserAgent:
             return None
 
         try:
+            # Delete old cached file so stale image is not returned
+            if self.qr_path.exists():
+                try:
+                    self.qr_path.unlink()
+                except Exception:
+                    pass
+
             btn_refresh = await self.page.query_selector(
-                "button:has-text('Lấy mã mới'), a:has-text('Lấy mã mới'), div:has-text('Lấy mã mới'), [role='button']:has-text('Lấy mã mới')"
+                ".qrcode-expired a, .qrcode-expired button, button:has-text('Lấy mã mới'), a:has-text('Lấy mã mới'), [role='button']:has-text('Lấy mã mới')"
             )
             if not btn_refresh:
-                loc = self.page.locator("text='Lấy mã mới'")
-                if await loc.count() > 0:
-                    btn_refresh = loc.last
+                try:
+                    loc = self.page.locator("text='Lấy mã mới'")
+                    if await loc.count() > 0:
+                        btn_refresh = loc.last
+                except Exception:
+                    pass
 
             if btn_refresh:
+                print("[ZaloBrowserAgent] Clicking 'Lấy mã mới' button...")
                 try:
                     await btn_refresh.click()
                 except Exception:
                     await btn_refresh.dispatch_event("click")
-                await asyncio.sleep(1.5)
-            else:
-                await self.page.reload(wait_until="domcontentloaded")
                 await asyncio.sleep(2)
+            else:
+                print("[ZaloBrowserAgent] Reloading page to generate brand new QR...")
+                await self.page.goto("https://chat.zalo.me", wait_until="domcontentloaded", timeout=30000)
+                await asyncio.sleep(2.5)
 
             self._last_capture_time = 0
             return await self.capture_qr()
