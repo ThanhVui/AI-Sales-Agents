@@ -152,11 +152,20 @@ class SupabaseManager:
             return False
 
     def get_customer_logs(self, phone: str) -> List[Dict[str, Any]]:
-        """Fetch logs specific to a phone number."""
+        """Fetch logs specific to a phone number (matches both with/without leading zero)."""
         if not self.is_connected:
             return []
         try:
-            res = self.client.table("campaign_logs").select("*").eq("phone", str(phone).strip()).order("created_at", desc=True).execute()
+            raw_phone = str(phone).strip()
+            clean_digits = "".join(filter(str.isdigit, raw_phone))
+            phone_variants = {raw_phone, clean_digits}
+            if clean_digits.startswith("0"):
+                phone_variants.add(clean_digits[1:])
+            else:
+                phone_variants.add("0" + clean_digits)
+
+            # Query using in_ filter across variants
+            res = self.client.table("campaign_logs").select("*").in_("phone", list(phone_variants)).order("created_at", desc=True).execute()
             return res.data or []
         except Exception as e:
             print(f"[SupabaseManager] Error fetching customer logs: {e}")

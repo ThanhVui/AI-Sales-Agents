@@ -95,6 +95,12 @@
           <span>Tải Zalo từ Cloud</span>
         </button>
 
+        <!-- Hộp Thư Tin Nhắn Đã Gửi Button -->
+        <button onclick="openInboxModal()" title="Xem trực tiếp tất cả tin nhắn Zalo đã gửi cho khách hàng" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-comments text-indigo-600"></i>
+          <span>Hộp Thư Zalo Đã Gửi</span>
+        </button>
+
         <!-- Refresh Button -->
         <button onclick="checkZaloStatus(true)" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center gap-1.5">
           <i class="fa-solid fa-arrows-rotate"></i>
@@ -581,6 +587,54 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
 
       <div class="mt-5 flex justify-end">
         <button onclick="closeModal('detailModal')" class="ant-btn px-4 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Hộp Thư Tin Nhắn Đã Gửi Toàn Hệ Thống -->
+  <div id="inboxModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="ant-card w-full max-w-4xl p-6 shadow-2xl relative flex flex-col max-h-[88vh]">
+      <button onclick="closeModal('inboxModal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center justify-between border-b border-gray-200 pb-3 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-base border border-indigo-200">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-gray-900">Hộp Thư Tin Nhắn Zalo Đã Gửi</h3>
+            <p class="text-xs text-gray-500">Xem trực tiếp nội dung tin nhắn Bot đã gửi cho khách hàng thực tế (lưu trên Cloud)</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="loadAllInboxLogs()" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Tải lại</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search in inbox -->
+      <div class="mb-3">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+          <input type="text" id="inboxSearchInput" oninput="renderInboxLogs()" placeholder="Tìm kiếm nhanh tin nhắn theo tên khách, SĐT, căn hộ, nội dung..." class="ant-input w-full pl-8 pr-3 py-1.5 text-xs text-gray-800 bg-white">
+        </div>
+      </div>
+
+      <!-- Messages Stream List -->
+      <div id="inboxLogsList" class="flex-1 overflow-y-auto space-y-3 pr-1 text-xs min-h-[300px]">
+        <div class="flex items-center justify-center py-16 text-gray-400">
+          <i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang tải danh sách tin nhắn...
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+        <span id="inboxCountInfo">Đang tải...</span>
+        <button onclick="closeModal('inboxModal')" class="ant-btn px-4 py-1.5 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Đóng</button>
       </div>
     </div>
   </div>
@@ -1567,23 +1621,103 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
         if (data.logs && data.logs.length > 0) {
           let logHtml = '';
           data.logs.forEach(l => {
-            logHtml += '<div class="p-2 rounded bg-white border border-gray-200 shadow-2xs">';
-            logHtml += '<div class="flex justify-between text-gray-500 text-[10px] mb-1">';
-            logHtml += `<span>${new Date(l.created_at).toLocaleString()}</span>`;
-            logHtml += `<span class="text-emerald-600 font-semibold">${l.status}</span>`;
+            logHtml += '<div class="p-2.5 rounded bg-white border border-gray-200 shadow-2xs space-y-1">';
+            logHtml += '<div class="flex justify-between items-center text-gray-500 text-[10px] pb-1 border-b border-gray-100">';
+            logHtml += `<span><i class="fa-regular fa-clock mr-1"></i>${new Date(l.created_at).toLocaleString('vi-VN')}</span>`;
+            logHtml += `<span class="px-2 py-0.5 rounded text-[10px] font-semibold ${l.status === 'Đã gửi' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-100 text-gray-600'}">${escapeHtml(l.status)}</span>`;
             logHtml += '</div>';
-            logHtml += `<div class="text-gray-800">${l.message || ''}</div>`;
+            logHtml += `<div class="text-gray-800 whitespace-pre-line text-xs font-sans leading-relaxed bg-gray-50/60 p-2 rounded">${escapeHtml(l.message || '')}</div>`;
+            if (l.note) {
+              logHtml += `<div class="text-[10px] text-gray-500 italic"><i class="fa-solid fa-circle-info mr-1"></i>${escapeHtml(l.note)}</div>`;
+            }
             logHtml += '</div>';
           });
           logsCont.innerHTML = logHtml;
         } else {
-          logsCont.innerHTML = '<div class="text-gray-400 italic">Chưa có lịch sử gửi tin nào.</div>';
+          logsCont.innerHTML = '<div class="text-gray-400 italic py-4 text-center">Chưa có lịch sử gửi tin nào cho số này.</div>';
         }
 
         openModal('detailModal');
       } catch (e) {
         showPopupAlert('error', 'Lỗi xem chi tiết', String(e));
       }
+    }
+
+    // Global Inbox Logic
+    let allInboxLogs = [];
+
+    async function openInboxModal() {
+      openModal('inboxModal');
+      await loadAllInboxLogs();
+    }
+
+    async function loadAllInboxLogs() {
+      const container = document.getElementById('inboxLogsList');
+      container.innerHTML = '<div class="flex items-center justify-center py-16 text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Đang tải danh sách tin nhắn...</div>';
+      try {
+        const res = await fetch('/api/campaign-logs?limit=200');
+        const data = await res.json();
+        allInboxLogs = data.logs || [];
+        renderInboxLogs();
+      } catch (e) {
+        container.innerHTML = `<div class="text-red-500 py-10 text-center">Lỗi tải tin nhắn: ${escapeHtml(String(e))}</div>`;
+      }
+    }
+
+    function renderInboxLogs() {
+      const container = document.getElementById('inboxLogsList');
+      const countInfo = document.getElementById('inboxCountInfo');
+      const search = (document.getElementById('inboxSearchInput')?.value || '').toLowerCase().trim();
+
+      const filtered = allInboxLogs.filter(l => {
+        if (!search) return true;
+        const name = (l.customer_name || '').toLowerCase();
+        const phone = (l.phone || '').toLowerCase();
+        const apt = (l.apartment || '').toLowerCase();
+        const msg = (l.message || '').toLowerCase();
+        return name.includes(search) || phone.includes(search) || apt.includes(search) || msg.includes(search);
+      });
+
+      countInfo.innerText = `Hiển thị ${filtered.length.toLocaleString()} / ${allInboxLogs.length.toLocaleString()} tin nhắn đã gửi`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-gray-400 py-16 text-center italic">Không tìm thấy tin nhắn nào.</div>';
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(l => {
+        const timeStr = l.created_at ? new Date(l.created_at).toLocaleString('vi-VN') : '';
+        const isSent = l.status === 'Đã gửi';
+        const badgeClass = isSent ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-200';
+
+        html += '<div class="p-3.5 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-xs transition">';
+        html += '<div class="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-gray-100">';
+        html += '<div class="flex items-center gap-2">';
+        html += `<span class="font-bold text-gray-900 text-sm">${escapeHtml(l.customer_name || 'Khách Hàng')}</span>`;
+        html += `<span class="px-2 py-0.5 rounded text-[11px] font-mono text-blue-700 font-semibold bg-blue-50 border border-blue-100">${escapeHtml(l.phone || '')}</span>`;
+        if (l.apartment) {
+          html += `<span class="px-2 py-0.5 rounded text-[11px] font-medium text-purple-700 bg-purple-50 border border-purple-100">Căn ${escapeHtml(l.apartment)}</span>`;
+        }
+        html += '</div>';
+        html += '<div class="flex items-center gap-2 text-[11px] text-gray-500">';
+        html += `<span><i class="fa-regular fa-clock mr-1"></i>${timeStr}</span>`;
+        html += `<span class="px-2 py-0.5 rounded text-[10px] font-semibold border ${badgeClass}">${escapeHtml(l.status || '')}</span>`;
+        html += '</div>';
+        html += '</div>';
+
+        html += '<div class="p-2.5 rounded bg-blue-50/30 border border-blue-100/60 text-gray-800 whitespace-pre-line text-xs font-sans leading-relaxed">';
+        html += escapeHtml(l.message || '');
+        html += '</div>';
+
+        if (l.note) {
+          html += `<div class="mt-1.5 text-[10px] text-gray-400 italic flex items-center gap-1"><i class="fa-solid fa-info-circle text-gray-400"></i> ${escapeHtml(l.note)}</div>`;
+        }
+
+        html += '</div>';
+      });
+
+      container.innerHTML = html;
     }
 
     // Edit Customer Modal

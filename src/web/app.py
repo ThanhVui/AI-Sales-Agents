@@ -399,6 +399,15 @@ async def get_customer_detail(phone: str):
     return {"success": True, "customer": customer, "logs": logs}
 
 
+@app.get("/api/campaign-logs")
+async def get_all_campaign_logs(limit: int = 100):
+    """
+    Get latest sent messages and responses across the entire system.
+    """
+    logs = supabase_db.get_campaign_logs(limit=limit)
+    return {"success": True, "logs": logs}
+
+
 @app.post("/api/customers/sync-to-db")
 async def sync_customers_to_db(req: SyncCustomersRequest):
     """
