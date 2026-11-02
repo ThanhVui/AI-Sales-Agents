@@ -134,7 +134,14 @@ async def serve_home():
     if not html_path.exists():
         raise HTTPException(status_code=404, detail="Template not found")
     with open(html_path, "r", encoding="utf-8") as f:
-        return f.read()
+        return HTMLResponse(
+            content=f.read(),
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        )
 
 
 @app.get("/api/status")
