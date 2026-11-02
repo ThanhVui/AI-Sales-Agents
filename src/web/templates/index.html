@@ -101,6 +101,12 @@
           <span>Hộp Thư Zalo Đã Gửi</span>
         </button>
 
+        <!-- Xem Trực Tiếp Zalo Web (Live Screen) Button -->
+        <button onclick="openLiveScreenModal()" title="Xem trực tiếp màn hình Zalo Web thực tế đang chạy trên server" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-desktop text-cyan-600"></i>
+          <span>Xem Trực Tiếp Zalo</span>
+        </button>
+
         <!-- Refresh Button -->
         <button onclick="checkZaloStatus(true)" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center gap-1.5">
           <i class="fa-solid fa-arrows-rotate"></i>
@@ -356,44 +362,64 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       </div>
 
       <!-- Search & Filters -->
-      <div class="mb-3.5 flex flex-wrap items-center gap-2.5 bg-gray-50/70 p-2.5 rounded-lg border border-gray-200">
-        <div class="relative flex-1 min-w-[240px]">
-          <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-          <input type="text" id="custSearch" oninput="currentPage = 1; renderTable()" placeholder="Tìm kiếm nhanh theo tên, căn hộ, SĐT, ghi chú..." class="ant-input w-full pl-8 pr-3 py-1.5 text-xs text-gray-800 bg-white">
+      <div class="mb-3.5 flex flex-col gap-2.5 bg-gray-50/80 p-3 rounded-lg border border-gray-200">
+        
+        <!-- Hàng 1: Tìm kiếm văn bản nhanh + Nút Xóa Lọc -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="relative flex-1 min-w-[260px]">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+            <input type="text" id="custSearch" oninput="currentPage = 1; renderTable()" placeholder="Tìm kiếm nhanh theo tên, căn hộ, SĐT, ghi chú..." class="ant-input w-full pl-8 pr-3 py-1.5 text-xs text-gray-800 bg-white">
+          </div>
+
+          <!-- Bộ Lọc Trạng Thái -->
+          <div class="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-md border border-gray-200">
+            <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i>Trạng thái:</span>
+            <select id="statusFilter" onchange="currentPage = 1; renderTable()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
+              <option value="">Tất cả</option>
+              <option value="Chưa gửi">Chưa gửi</option>
+              <option value="Đã gửi">Đã gửi</option>
+              <option value="Chưa đăng ký Zalo">Chưa ĐK Zalo</option>
+              <option value="Lỗi">Lỗi</option>
+            </select>
+          </div>
+
+          <!-- Nút Đặt Lại Toàn Bộ Bộ Lọc -->
+          <button onclick="resetFilters()" title="Đặt lại tất cả bộ lọc" class="ant-btn px-3 py-1.5 rounded-md text-xs bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 flex items-center gap-1">
+            <i class="fa-solid fa-rotate-left text-gray-400"></i> Xóa lọc
+          </button>
         </div>
 
-        <!-- Bộ Lọc Tòa (Block) -->
-        <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
-          <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-regular fa-building text-blue-600 mr-1"></i>Tòa:</span>
-          <select id="blockFilter" onchange="onBlockFilterChange()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
-            <option value="">Tất cả Tòa</option>
-          </select>
+        <!-- Hàng 2: Bộ lọc chọn nhiều TÒA & TRỤC CĂN tùy chọn -->
+        <div class="pt-2 border-t border-gray-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div class="flex flex-wrap items-center gap-4 flex-1">
+            <!-- Chọn Nhiều Tòa -->
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-gray-700 text-xs flex items-center gap-1 whitespace-nowrap">
+                <i class="fa-regular fa-building text-blue-600"></i> Tòa:
+              </span>
+              <div id="multiBlockContainer" class="flex flex-wrap items-center gap-1.5">
+                <!-- Sẽ tự động render checkbox/badges các tòa A, B, C, D... -->
+              </div>
+            </div>
+
+            <!-- Chọn Nhiều Trục Căn -->
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-gray-700 text-xs flex items-center gap-1 whitespace-nowrap">
+                <i class="fa-solid fa-compass text-amber-600"></i> Trục Căn:
+              </span>
+              <div id="multiAxisContainer" class="flex flex-wrap items-center gap-1 max-h-16 overflow-y-auto">
+                <!-- Sẽ tự động render badge các trục 01, 02... -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Huy hiệu thông tin đang lọc -->
+          <div id="filterAppliedBadge" class="hidden shrink-0 px-2.5 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-filter-circle-check text-blue-600"></i>
+            <span id="filterAppliedText">Đang lọc</span>
+          </div>
         </div>
 
-        <!-- Bộ Lọc Trục Căn (Axis) -->
-        <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
-          <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-solid fa-compass text-amber-600 mr-1"></i>Trục:</span>
-          <select id="axisFilter" onchange="currentPage = 1; renderTable()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
-            <option value="">Tất cả Trục</option>
-          </select>
-        </div>
-
-        <!-- Bộ Lọc Trạng Thái -->
-        <div class="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-gray-200">
-          <span class="text-[11px] font-semibold text-gray-500 whitespace-nowrap"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i>Trạng thái:</span>
-          <select id="statusFilter" onchange="currentPage = 1; renderTable()" class="text-xs text-gray-800 bg-transparent outline-none cursor-pointer font-medium">
-            <option value="">Tất cả</option>
-            <option value="Chưa gửi">Chưa gửi</option>
-            <option value="Đã gửi">Đã gửi</option>
-            <option value="Chưa đăng ký Zalo">Chưa ĐK Zalo</option>
-            <option value="Lỗi">Lỗi</option>
-          </select>
-        </div>
-
-        <!-- Nút Reset Lọc -->
-        <button onclick="resetFilters()" title="Đặt lại tất cả bộ lọc" class="ant-btn px-2.5 py-1.5 rounded text-xs bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 flex items-center gap-1">
-          <i class="fa-solid fa-rotate-left text-gray-400"></i> Xóa lọc
-        </button>
       </div>
 
       <!-- Customer Data Table (Full Width) -->
@@ -639,6 +665,58 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
     </div>
   </div>
 
+  <!-- Modal: Xem Màn Hình Trực Tiếp Zalo Web (Live Screen) -->
+  <div id="liveScreenModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5">
+    <div class="ant-card w-full max-w-5xl p-5 shadow-2xl relative flex flex-col max-h-[92vh]">
+      <button onclick="closeLiveScreenModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center justify-between border-b border-gray-200 pb-3 mb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center text-base border border-cyan-200">
+            <i class="fa-solid fa-desktop"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-gray-900">Màn Hình Trực Tiếp Zalo Web</h3>
+              <span id="liveStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Live Feed</span>
+              </span>
+            </div>
+            <p class="text-xs text-gray-500">Xem trực tiếp nội dung giao diện Zalo Web thực tế trên máy chủ - An toàn 100%, không bị out phiên</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer bg-gray-50 px-2.5 py-1 rounded border border-gray-200">
+            <input type="checkbox" id="liveAutoRefreshToggle" checked onchange="toggleLiveAutoRefresh()" class="rounded text-blue-600">
+            <span>Tự động làm mới (2.5s)</span>
+          </label>
+          <button onclick="refreshLiveScreen()" class="ant-btn px-3 py-1.5 rounded-md text-xs font-medium bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>Chụp lại</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Screen Image Display Container -->
+      <div class="flex-1 bg-slate-900 rounded-lg overflow-auto border border-gray-300 flex items-center justify-center relative min-h-[420px] max-h-[68vh] p-1 shadow-inner">
+        <div id="liveScreenSpinner" class="hidden absolute inset-0 bg-slate-900/60 backdrop-blur-xs flex flex-col items-center justify-center z-10 text-white">
+          <div class="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin mb-2"></div>
+          <span class="text-xs text-cyan-200">Đang chụp màn hình Zalo...</span>
+        </div>
+        <img id="liveScreenImg" src="" alt="Màn hình Zalo Web trực tiếp" class="max-w-full h-auto rounded object-contain shadow-lg" />
+      </div>
+
+      <div class="mt-3 pt-2 border-t border-gray-200 flex justify-between items-center text-xs text-gray-500">
+        <span id="liveScreenTimestamp">Cập nhật lần cuối: Đang tải...</span>
+        <button onclick="closeLiveScreenModal()" class="ant-btn px-4 py-1.5 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal 4: Chỉnh Sửa Khách Hàng -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="ant-card w-full max-w-md p-6 shadow-2xl relative">
@@ -820,6 +898,82 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
         clearInterval(qrPollInterval);
         qrPollInterval = null;
         qrPollCount = 0;
+      }
+      if (id === 'liveScreenModal') {
+        stopLiveScreenPolling();
+      }
+    }
+
+    // Live Screen Modal Handlers
+    let liveScreenInterval = null;
+    let isFetchingLiveScreen = false;
+
+    function openLiveScreenModal() {
+      openModal('liveScreenModal');
+      refreshLiveScreen();
+      const toggle = document.getElementById('liveAutoRefreshToggle');
+      if (toggle && toggle.checked) {
+        startLiveScreenPolling();
+      }
+    }
+
+    function closeLiveScreenModal() {
+      closeModal('liveScreenModal');
+    }
+
+    function startLiveScreenPolling() {
+      stopLiveScreenPolling();
+      liveScreenInterval = setInterval(refreshLiveScreen, 2500);
+    }
+
+    function stopLiveScreenPolling() {
+      if (liveScreenInterval) {
+        clearInterval(liveScreenInterval);
+        liveScreenInterval = null;
+      }
+    }
+
+    function toggleLiveAutoRefresh() {
+      const isChecked = document.getElementById('liveAutoRefreshToggle')?.checked;
+      if (isChecked) {
+        startLiveScreenPolling();
+        showToast('info', 'Đã bật tự động làm mới Live Feed (2.5s)');
+      } else {
+        stopLiveScreenPolling();
+        showToast('info', 'Đã tạm dừng tự động làm mới Live Feed');
+      }
+    }
+
+    async function refreshLiveScreen() {
+      if (isFetchingLiveScreen) return;
+      isFetchingLiveScreen = true;
+      const img = document.getElementById('liveScreenImg');
+      const ts = document.getElementById('liveScreenTimestamp');
+      const spinner = document.getElementById('liveScreenSpinner');
+
+      try {
+        if (img && !img.src) {
+          spinner?.classList.remove('hidden');
+        }
+        const res = await fetch('/api/live-screen?t=' + Date.now());
+        if (res.ok) {
+          const blob = await res.blob();
+          if (img) {
+            const oldUrl = img.src;
+            img.src = URL.createObjectURL(blob);
+            if (oldUrl && oldUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(oldUrl);
+            }
+          }
+          if (ts) {
+            ts.innerText = 'Cập nhật lần cuối: ' + new Date().toLocaleTimeString('vi-VN');
+          }
+        }
+      } catch (e) {
+        console.warn('Live screen fetch error:', e);
+      } finally {
+        spinner?.classList.add('hidden');
+        isFetchingLiveScreen = false;
       }
     }
 
@@ -1391,79 +1545,136 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       container.innerHTML = html;
     }
 
-    // Update Block & Axis filter dropdowns dynamically from customer list
-    function updateBlockAxisDropdowns() {
-      const blockSelect = document.getElementById('blockFilter');
-      const axisSelect = document.getElementById('axisFilter');
-      if (!blockSelect || !axisSelect) return;
+    // Multi-Select Filter State: Sets of selected blocks and axes
+    let selectedBlocks = new Set();
+    let selectedAxes = new Set();
 
-      const currentBlock = blockSelect.value;
-      const currentAxis = axisSelect.value;
+    // Toggle a Block selection
+    function toggleBlockSelection(block) {
+      if (selectedBlocks.has(block)) {
+        selectedBlocks.delete(block);
+      } else {
+        selectedBlocks.add(block);
+      }
+      currentPage = 1;
+      updateBlockAxisDropdowns();
+      updateFilterUI();
+      renderTable();
+    }
+
+    // Toggle an Axis selection
+    function toggleAxisSelection(axis) {
+      if (selectedAxes.has(axis)) {
+        selectedAxes.delete(axis);
+      } else {
+        selectedAxes.add(axis);
+      }
+      currentPage = 1;
+      updateBlockAxisDropdowns();
+      updateFilterUI();
+      renderTable();
+    }
+
+    // Render interactive multi-select badges for Blocks & Axes
+    function updateBlockAxisDropdowns() {
+      const blockContainer = document.getElementById('multiBlockContainer');
+      const axisContainer = document.getElementById('multiAxisContainer');
+      if (!blockContainer || !axisContainer) return;
 
       // Extract unique blocks
       const blockSet = new Set();
-      customers.forEach(c => {
-        const b = String(c.block || '').trim();
-        if (b) blockSet.add(b);
-      });
-      const sortedBlocks = Array.from(blockSet).sort();
-
-      blockSelect.innerHTML = '<option value="">Tất cả Tòa</option>' + 
-        sortedBlocks.map(b => `<option value="${escapeHtml(b)}" ${b === currentBlock ? 'selected' : ''}>Tòa ${escapeHtml(b)}</option>`).join('');
-
-      // Extract unique axes (filtered by block if selected)
       const axisSet = new Set();
       customers.forEach(c => {
         const b = String(c.block || '').trim();
         const a = String(c.axis || '').trim();
-        if (a && (!currentBlock || b === currentBlock)) {
-          axisSet.add(a);
-        }
+        if (b) blockSet.add(b);
+        if (a) axisSet.add(a);
       });
+
+      const sortedBlocks = Array.from(blockSet).sort();
       const sortedAxes = Array.from(axisSet).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
 
-      axisSelect.innerHTML = '<option value="">Tất cả Trục</option>' + 
-        sortedAxes.map(a => `<option value="${escapeHtml(a)}" ${a === currentAxis ? 'selected' : ''}>Trục ${escapeHtml(a)}</option>`).join('');
+      // Render Block Badges
+      let bHtml = '';
+      sortedBlocks.forEach(b => {
+        const isSelected = selectedBlocks.has(b);
+        const cls = isSelected 
+          ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600';
+        bHtml += `<button type="button" onclick="toggleBlockSelection('${escapeHtml(b)}')" class="px-2.5 py-1 rounded text-xs font-semibold border transition flex items-center gap-1 ${cls}">
+          <i class="fa-regular fa-building text-[10px]"></i>
+          <span>Tòa ${escapeHtml(b)}</span>
+          ${isSelected ? '<i class="fa-solid fa-check text-[10px] ml-0.5"></i>' : ''}
+        </button>`;
+      });
+      blockContainer.innerHTML = bHtml || '<span class="text-gray-400 italic">Không có dữ liệu tòa</span>';
+
+      // Render Axis Badges
+      let aHtml = '';
+      sortedAxes.forEach(a => {
+        const isSelected = selectedAxes.has(a);
+        const cls = isSelected 
+          ? 'bg-amber-600 text-white border-amber-600 shadow-xs' 
+          : 'bg-white text-gray-700 border-gray-300 hover:border-amber-400 hover:text-amber-600';
+        aHtml += `<button type="button" onclick="toggleAxisSelection('${escapeHtml(a)}')" class="px-2 py-0.5 rounded text-[11px] font-medium border transition flex items-center gap-0.5 ${cls}">
+          <span>Trục ${escapeHtml(a)}</span>
+          ${isSelected ? '<i class="fa-solid fa-check text-[9px] ml-0.5"></i>' : ''}
+        </button>`;
+      });
+      axisContainer.innerHTML = aHtml || '<span class="text-gray-400 italic">Không có dữ liệu trục</span>';
+
+      updateFilterUI();
     }
 
-    function onBlockFilterChange() {
-      updateBlockAxisDropdowns();
-      currentPage = 1;
-      renderTable();
+    function updateFilterUI() {
+      const badge = document.getElementById('filterAppliedBadge');
+      const text = document.getElementById('filterAppliedText');
+      if (!badge || !text) return;
+
+      const hasBlock = selectedBlocks.size > 0;
+      const hasAxis = selectedAxes.size > 0;
+
+      if (hasBlock || hasAxis) {
+        let parts = [];
+        if (hasBlock) parts.push(`Tòa: ${Array.from(selectedBlocks).join(', ')}`);
+        if (hasAxis) parts.push(`Trục: ${Array.from(selectedAxes).join(', ')}`);
+        text.innerText = parts.join(' | ');
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
     }
 
     function resetFilters() {
       document.getElementById('custSearch').value = '';
-      document.getElementById('blockFilter').value = '';
-      document.getElementById('axisFilter').value = '';
       document.getElementById('statusFilter').value = '';
+      selectedBlocks.clear();
+      selectedAxes.clear();
       updateBlockAxisDropdowns();
       currentPage = 1;
       renderTable();
-      showToast('info', 'Đã đặt lại bộ lọc');
+      showToast('info', 'Đã đặt lại tất cả bộ lọc');
     }
 
-    // Get current filtered customer list (matching search query, block, axis, status)
+    // Get current filtered customer list (matching search query, multi blocks, multi axes, status)
     function getFilteredCustomers() {
       const query = (document.getElementById('custSearch')?.value || '').toLowerCase().trim();
       const statusFilter = document.getElementById('statusFilter')?.value || '';
-      const blockFilter = (document.getElementById('blockFilter')?.value || '').trim().toLowerCase();
-      const axisFilter = (document.getElementById('axisFilter')?.value || '').trim().toLowerCase();
 
       return customers.filter(c => {
         // Status filter
         if (statusFilter && (c.status || 'Chưa gửi') !== statusFilter) return false;
 
-        // Block filter
-        if (blockFilter) {
-          const b = String(c.block || '').trim().toLowerCase();
-          if (b !== blockFilter) return false;
+        // Multi-Block Filter: if any selected, customer's block must match one of them
+        if (selectedBlocks.size > 0) {
+          const b = String(c.block || '').trim();
+          if (!selectedBlocks.has(b)) return false;
         }
 
-        // Axis filter
-        if (axisFilter) {
-          const a = String(c.axis || '').trim().toLowerCase();
-          if (a !== axisFilter) return false;
+        // Multi-Axis Filter: if any selected, customer's axis must match one of them
+        if (selectedAxes.size > 0) {
+          const a = String(c.axis || '').trim();
+          if (!selectedAxes.has(a)) return false;
         }
 
         // Search text

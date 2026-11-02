@@ -538,6 +538,18 @@ class ZaloBrowserAgent:
             print(f"[ZaloBrowserAgent] refresh_qr error: {e}")
             return None
 
+    async def capture_live_screen(self) -> Optional[bytes]:
+        """
+        Safely capture current Zalo screen as a lightweight JPEG without interrupting bot actions.
+        """
+        if not self.page or self.page.is_closed():
+            return None
+        try:
+            return await self.page.screenshot(type="jpeg", quality=75, full_page=False)
+        except Exception as e:
+            print(f"[ZaloBrowserAgent] Error capturing live screen: {e}")
+            return None
+
     async def logout(self) -> bool:
         """Logout current Zalo session and prepare fresh QR code."""
         return await self.reset_session()

@@ -149,6 +149,32 @@ async def get_system_status(check: bool = False):
     }
 
 
+@app.get("/api/live-screen")
+async def get_live_screen():
+    """
+    Get live screenshot of active Zalo Web screen without disturbing active session.
+    """
+    img_bytes = await zalo_agent.capture_live_screen()
+    if not img_bytes:
+        # Fallback SVG when browser is not running or initializing
+        svg_fallback = """<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+          <rect width="600" height="400" fill="#0f172a"/>
+          <text x="300" y="190" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="600" fill="#94a3b8">Trình duyệt Zalo đang khởi động hoặc chưa mở...</text>
+          <text x="300" y="220" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" fill="#64748b">Vui lòng bấm Tải lại hoặc kiểm tra kết nối Zalo</text>
+        </svg>"""
+        return Response(content=svg_fallback, media_type="image/svg+xml", headers={"Cache-Control": "no-cache"})
+
+    return Response(
+        content=img_bytes,
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
 @app.get("/api/qr-image")
 async def get_qr_image():
     qr_path = zalo_agent.qr_path
