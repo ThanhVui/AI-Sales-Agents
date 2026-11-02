@@ -103,7 +103,22 @@ class BatchWorker:
         if schedule_config:
             self.schedule_config.update(schedule_config)
 
-        self.total_count = len(customers)
+        mode = self.schedule_config.get("mode", "schedule")
+        max_cust = self.schedule_config.get("max_customers")
+        if max_cust is not None:
+            try:
+                max_cust_int = int(max_cust)
+                if max_cust_int > 0:
+                    self.total_count = min(len(customers), max_cust_int)
+                else:
+                    self.total_count = len(customers)
+                    self.schedule_config["max_customers"] = None
+            except (ValueError, TypeError):
+                self.total_count = len(customers)
+                self.schedule_config["max_customers"] = None
+        else:
+            self.total_count = len(customers)
+
         self.current_index = 0
         self.sent_count = 0
         self.not_registered_count = 0
@@ -112,14 +127,15 @@ class BatchWorker:
         self._pause_event.set()
         self._reset_daily_quota_if_needed()
 
-        mode = self.schedule_config.get("mode", "schedule")
         min_d = self.schedule_config.get("min_delay", 300)
         max_d = self.schedule_config.get("max_delay", 600)
 
         if mode == "schedule":
             self.add_log(f"🛡️ Kích hoạt chiến dịch Lịch Trình Chống Khóa Zalo: Sáng/Chiều/Tối (Giãn cách: {min_d}s - {max_d}s).")
         else:
-            self.add_log(f"⚡ Kích hoạt chiến dịch Gửi Liên Tục An Toàn: {self.total_count} khách (Giãn cách ngẫu nhiên: {min_d}s - {max_d}s).")
+            max_c = self.schedule_config.get("max_customers")
+            lim_text = f"Tối đa {max_c} khách" if max_c else f"Toàn bộ {len(customers)} khách"
+            self.add_log(f"⚡ Kích hoạt chế độ Tự Chạy (Tùy Chỉnh): {lim_text} (Giãn cách ngẫu nhiên: {min_d}s - {max_d}s). Không theo ca.")
 
         self._task = asyncio.create_task(self._run_loop(test_only=test_only))
         return True
@@ -129,11 +145,26 @@ class BatchWorker:
             mode = self.schedule_config.get("mode", "schedule")
             min_delay = max(5, int(self.schedule_config.get("min_delay", 300)))
             max_delay = max(min_delay, int(self.schedule_config.get("max_delay", 600)))
+            max_customers = self.schedule_config.get("max_customers")
+            if max_customers is not None:
+                try:
+                    max_customers = int(max_customers)
+                    if max_customers <= 0:
+                        max_customers = None
+                except (ValueError, TypeError):
+                    max_customers = None
 
             cust_idx = 0
             while cust_idx < len(self.customers):
                 await self._pause_event.wait()
                 if self.status in ("STOPPED", "IDLE"):
+                    break
+
+                # If in continuous/custom mode and target limit reached, finish batch
+                if max_customers and self.sent_count >= max_customers:
+                    self.status = "COMPLETED"
+                    self.current_session_name = f"Đã hoàn thành {self.sent_count}/{max_customers} khách"
+                    self.add_log(f"🏁 Đã gửi đủ chỉ tiêu {self.sent_count}/{max_customers} khách! Chiến dịch tự do kết thúc.")
                     break
 
                 self._reset_daily_quota_if_needed()
@@ -213,6 +244,9 @@ class BatchWorker:
                         act = self._get_active_session()
                         if act:
                             self.session_sent[act] = self.session_sent.get(act, 0) + 1
+                    else:
+                        target_str = f"/{max_customers}" if max_customers else ""
+                        self.current_session_name = f"Tự chạy: Đã gửi {self.sent_count}{target_str}"
                 elif new_status == "Chưa đăng ký Zalo":
                     self.not_registered_count += 1
                 else:
@@ -224,12 +258,19 @@ class BatchWorker:
 
                 cust_idx += 1
 
+                # If reached target limit, end campaign immediately without extra waiting
+                if max_customers and self.sent_count >= max_customers:
+                    self.status = "COMPLETED"
+                    self.current_session_name = f"Đã hoàn thành {self.sent_count}/{max_customers} khách"
+                    self.add_log(f"🏁 Đã gửi đủ chỉ tiêu {self.sent_count}/{max_customers} khách! Chiến dịch tự chạy hoàn thành.")
+                    break
+
                 # Randomized Delay Jitter before next customer
-                if cust_idx < self.total_count and self.status in ("RUNNING", "WAITING_SCHEDULE"):
+                if cust_idx < len(self.customers) and self.status in ("RUNNING", "WAITING_SCHEDULE"):
                     sleep_delay = random.randint(min_delay, max_delay)
                     delay_min = round(sleep_delay / 60, 1)
                     self.next_action_time = f"Sau ~{delay_min} phút ({sleep_delay}s)"
-                    self.add_log(f"☕ Giãn cách an toàn: Nghỉ {sleep_delay} giây (~{delay_min} phút) trước khi gửi khách tiếp theo...")
+                    self.add_log(f"☕ Giãn cách: Nghỉ {sleep_delay} giây (~{delay_min} phút) trước khi gửi khách tiếp theo...")
                     
                     # Sleep in small slices to be responsive to Pause / Stop
                     for _ in range(sleep_delay):

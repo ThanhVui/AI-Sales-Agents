@@ -178,72 +178,104 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
         <div class="lg:col-span-5 flex flex-col justify-between border-t lg:border-t-0 lg:border-l border-gray-200 lg:pl-5 pt-4 lg:pt-0">
           
           <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-                <i class="fa-solid fa-shield-halved text-emerald-600"></i> Lịch Trình Chống Khóa Zalo
+            <div class="flex items-center justify-between mb-2.5">
+              <h3 id="scheduleHeaderTitle" class="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-600"></i> Lịch Trình Chống Khóa (3 Ca)
               </h3>
               <!-- Schedule Mode Toggle -->
-              <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700">
+              <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 bg-white px-2.5 py-1 rounded-md border border-gray-200 shadow-2xs hover:bg-gray-50">
                 <input type="checkbox" id="scheduleModeToggle" checked onchange="toggleScheduleMode()" class="rounded text-blue-600 focus:ring-0">
-                <span>Bật Lịch Trình (An Toàn)</span>
+                <span id="scheduleToggleLabel" class="font-semibold text-emerald-700">Lịch Trình 3 Ca</span>
               </label>
             </div>
 
             <!-- Schedule Customization Form -->
             <div id="scheduleConfigBox" class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2 text-xs">
-              <!-- Sáng -->
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-700 w-24">Ca Sáng:</span>
-                <div class="flex items-center gap-1">
-                  <input type="time" id="mStart" value="09:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
-                  <span class="text-gray-400">-</span>
-                  <input type="time" id="mEnd" value="11:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+              
+              <!-- Khối 1: Lịch Trình 3 Ca An Toàn (Hiện khi bật checkbox) -->
+              <div id="scheduleShiftsBox" class="space-y-2">
+                <!-- Sáng -->
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-700 w-24">Ca Sáng:</span>
+                  <div class="flex items-center gap-1">
+                    <input type="time" id="mStart" value="09:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                    <span class="text-gray-400">-</span>
+                    <input type="time" id="mEnd" value="11:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-gray-500">Tối đa:</span>
+                    <input type="number" id="mLimit" value="15" min="1" max="50" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                    <span class="text-gray-500">khách</span>
+                  </div>
                 </div>
-                <div class="flex items-center gap-1">
-                  <span class="text-gray-500">Tối đa:</span>
-                  <input type="number" id="mLimit" value="15" min="1" max="50" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
-                  <span class="text-gray-500">khách</span>
+
+                <!-- Chiều -->
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-700 w-24">Ca Chiều:</span>
+                  <div class="flex items-center gap-1">
+                    <input type="time" id="aStart" value="14:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                    <span class="text-gray-400">-</span>
+                    <input type="time" id="aEnd" value="16:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-gray-500">Tối đa:</span>
+                    <input type="number" id="aLimit" value="15" min="1" max="50" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                    <span class="text-gray-500">khách</span>
+                  </div>
+                </div>
+
+                <!-- Tối -->
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-gray-700 w-24">Ca Tối:</span>
+                  <div class="flex items-center gap-1">
+                    <input type="time" id="eStart" value="19:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                    <span class="text-gray-400">-</span>
+                    <input type="time" id="eEnd" value="20:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-gray-500">Tối đa:</span>
+                    <input type="number" id="eLimit" value="10" min="1" max="30" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                    <span class="text-gray-500">khách</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- Chiều -->
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-700 w-24">Ca Chiều:</span>
-                <div class="flex items-center gap-1">
-                  <input type="time" id="aStart" value="14:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
-                  <span class="text-gray-400">-</span>
-                  <input type="time" id="aEnd" value="16:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
+              <!-- Khối 2: Chế độ Tự Chạy / Tùy Chỉnh (Hiện khi tắt checkbox Lịch Trình) -->
+              <div id="manualModeBox" class="hidden space-y-2 py-1">
+                <div class="p-2 bg-amber-50/80 border border-amber-200 rounded text-amber-900 text-[11px] leading-relaxed flex items-start gap-1.5">
+                  <i class="fa-solid fa-bolt text-amber-600 mt-0.5 shrink-0"></i>
+                  <span><b>Chế độ Tự Chạy:</b> Bấm gửi là chạy ngay lập tức, không phụ thuộc ca sáng/chiều/tối. Bot sẽ tự động dừng khi gửi đủ số lượng khách bạn chọn.</span>
                 </div>
-                <div class="flex items-center gap-1">
-                  <span class="text-gray-500">Tối đa:</span>
-                  <input type="number" id="aLimit" value="15" min="1" max="50" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
-                  <span class="text-gray-500">khách</span>
+
+                <div class="flex items-center justify-between pt-1">
+                  <span class="font-semibold text-gray-700 flex items-center gap-1">
+                    <i class="fa-solid fa-users text-blue-600"></i> Số lượng khách đợt này:
+                  </span>
+                  <div class="flex items-center gap-1">
+                    <input type="number" id="manualTargetCount" value="10" min="1" max="5000" placeholder="Số lượng" class="ant-input w-16 px-1.5 py-0.5 text-center text-xs bg-white font-bold text-gray-800">
+                    <span class="text-gray-500">khách</span>
+                  </div>
+                </div>
+                <div class="flex items-center justify-end gap-1.5 text-[10px]">
+                  <span class="text-gray-400">Chọn nhanh:</span>
+                  <button type="button" onclick="setManualCount(5)" class="px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600">5</button>
+                  <button type="button" onclick="setManualCount(10)" class="px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600">10</button>
+                  <button type="button" onclick="setManualCount(20)" class="px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600">20</button>
+                  <button type="button" onclick="setManualCount(50)" class="px-1.5 py-0.5 rounded bg-white border border-gray-200 text-gray-600 hover:border-blue-500 hover:text-blue-600">50</button>
+                  <button type="button" onclick="setManualCount(0)" class="px-1.5 py-0.5 rounded bg-white border border-gray-200 text-blue-600 font-semibold hover:bg-blue-50">Tất cả</button>
                 </div>
               </div>
 
-              <!-- Tối -->
-              <div class="flex items-center justify-between">
-                <span class="font-medium text-gray-700 w-24">Ca Tối:</span>
-                <div class="flex items-center gap-1">
-                  <input type="time" id="eStart" value="19:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
-                  <span class="text-gray-400">-</span>
-                  <input type="time" id="eEnd" value="20:00" class="ant-input px-1.5 py-0.5 text-xs text-gray-700 bg-white">
-                </div>
-                <div class="flex items-center gap-1">
-                  <span class="text-gray-500">Tối đa:</span>
-                  <input type="number" id="eLimit" value="10" min="1" max="30" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
-                  <span class="text-gray-500">khách</span>
-                </div>
-              </div>
-
-              <!-- Random Delay Jitter (Giãn cách ngẫu nhiên) -->
-              <div class="pt-1.5 border-t border-gray-200 flex items-center justify-between">
-                <span class="font-medium text-gray-700">Giãn cách ngẫu nhiên:</span>
+              <!-- Random Delay Jitter (Giãn cách ngẫu nhiên - Luôn hiển thị và chỉnh được trong cả 2 chế độ) -->
+              <div class="pt-2 border-t border-gray-200 flex items-center justify-between">
+                <span class="font-medium text-gray-700 flex items-center gap-1">
+                  <i class="fa-solid fa-clock-rotate-left text-purple-600"></i> Giãn cách ngẫu nhiên:
+                </span>
                 <div class="flex items-center gap-1">
                   <span class="text-gray-500">Từ</span>
-                  <input type="number" id="minDelayMin" value="5" min="1" max="60" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <input type="number" id="minDelayMin" value="5" min="0.1" step="0.5" max="60" class="ant-input w-14 px-1 py-0.5 text-center text-xs bg-white font-medium">
                   <span class="text-gray-500">đến</span>
-                  <input type="number" id="maxDelayMin" value="10" min="1" max="120" class="ant-input w-12 px-1 py-0.5 text-center text-xs bg-white">
+                  <input type="number" id="maxDelayMin" value="10" min="0.1" step="0.5" max="120" class="ant-input w-14 px-1 py-0.5 text-center text-xs bg-white font-medium">
                   <span class="text-gray-500">phút</span>
                 </div>
               </div>
@@ -1057,14 +1089,41 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
     }
     document.getElementById('templateText').addEventListener('input', updatePreview);
 
-    // Toggle Schedule Mode Box
+    // Toggle Schedule Mode Box (Lịch trình 3 ca vs Tự chạy tự do)
     function toggleScheduleMode() {
       const isChecked = document.getElementById('scheduleModeToggle').checked;
-      const box = document.getElementById('scheduleConfigBox');
+      const shiftsBox = document.getElementById('scheduleShiftsBox');
+      const manualBox = document.getElementById('manualModeBox');
+      const title = document.getElementById('scheduleHeaderTitle');
+      const toggleLabel = document.getElementById('scheduleToggleLabel');
+
       if (isChecked) {
-        box.classList.remove('opacity-40', 'pointer-events-none');
+        if (shiftsBox) shiftsBox.classList.remove('hidden');
+        if (manualBox) manualBox.classList.add('hidden');
+        if (title) title.innerHTML = '<i class="fa-solid fa-shield-halved text-emerald-600"></i> Lịch Trình Chống Khóa (3 Ca)';
+        if (toggleLabel) {
+          toggleLabel.innerText = 'Lịch Trình 3 Ca';
+          toggleLabel.className = 'font-semibold text-emerald-700';
+        }
       } else {
-        box.classList.add('opacity-40', 'pointer-events-none');
+        if (shiftsBox) shiftsBox.classList.add('hidden');
+        if (manualBox) manualBox.classList.remove('hidden');
+        if (title) title.innerHTML = '<i class="fa-solid fa-bolt text-amber-600"></i> Tự Chạy (Tùy Chỉnh)';
+        if (toggleLabel) {
+          toggleLabel.innerText = 'Tự Chạy Tự Do';
+          toggleLabel.className = 'font-semibold text-amber-700';
+        }
+      }
+    }
+
+    function setManualCount(num) {
+      const input = document.getElementById('manualTargetCount');
+      if (!input) return;
+      if (num === 0) {
+        input.value = '';
+        input.placeholder = 'Tất cả';
+      } else {
+        input.value = num;
       }
     }
 
@@ -2069,10 +2128,33 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       }
 
       const isFiltered = targetCustomers.length < customers.length;
-      if (!testOnly && isFiltered) {
+      const template = document.getElementById('templateText').value.trim();
+      const isScheduleMode = document.getElementById('scheduleModeToggle').checked;
+
+      const minDelayMin = parseFloat(document.getElementById('minDelayMin').value) || 5;
+      const maxDelayMin = parseFloat(document.getElementById('maxDelayMin').value) || 10;
+
+      let maxCustomers = null;
+      if (!isScheduleMode) {
+        const val = parseInt(document.getElementById('manualTargetCount')?.value);
+        if (!isNaN(val) && val > 0) {
+          maxCustomers = val;
+        }
+      }
+
+      if (!testOnly) {
+        let confirmText = '';
+        if (isScheduleMode) {
+          const filterNote = isFiltered ? ` (đang lọc ${targetCustomers.toLocaleString()} / ${customers.length.toLocaleString()} khách)` : '';
+          confirmText = `Chiến dịch <b>Lịch Trình Chống Khóa (3 Ca)</b> sẽ áp dụng cho <b>${targetCustomers.toLocaleString()} khách hàng</b>${filterNote}.<br><span class="text-xs text-gray-500 mt-1 block">Tự động chia ca: Sáng (9h-11h), Chiều (14h-16h), Tối (19h-20h) kèm giãn cách ngẫu nhiên.</span>`;
+        } else {
+          const countText = maxCustomers ? `<b>${maxCustomers.toLocaleString()} khách hàng</b> (trên ${targetCustomers.toLocaleString()} khách)` : `<b>toàn bộ ${targetCustomers.toLocaleString()} khách hàng</b>`;
+          confirmText = `Chế độ <b>Tự Chạy Tự Do</b>: Sẽ gửi cho ${countText} với thời gian giãn cách ngẫu nhiên từ <b>${minDelayMin} đến ${maxDelayMin} phút</b>.<br><span class="text-xs text-emerald-600 mt-1 block">✓ Chạy ngay lập tức, không phụ thuộc khung giờ ca.</span>`;
+        }
+
         const confirm = await Swal.fire({
-          title: 'Xác nhận gửi theo bộ lọc?',
-          html: `Bạn đang áp dụng bộ lọc: Chiến dịch sẽ <b>chỉ gửi cho ${targetCustomers.toLocaleString()} khách hàng</b> thỏa mãn bộ lọc (trên tổng số ${customers.length.toLocaleString()} khách).`,
+          title: isScheduleMode ? 'Bắt đầu gửi theo Lịch Trình?' : 'Bắt đầu Tự Chạy ngay?',
+          html: confirmText,
           icon: 'question',
           showCancelButton: true,
           confirmButtonText: 'Bắt đầu gửi ngay',
@@ -2087,16 +2169,11 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
         if (!confirm.isConfirmed) return;
       }
 
-      const template = document.getElementById('templateText').value.trim();
-      const isScheduleMode = document.getElementById('scheduleModeToggle').checked;
-
-      const minDelayMin = parseFloat(document.getElementById('minDelayMin').value) || 5;
-      const maxDelayMin = parseFloat(document.getElementById('maxDelayMin').value) || 10;
-
       const scheduleConfig = {
         mode: isScheduleMode ? "schedule" : "continuous",
-        min_delay: Math.round(minDelayMin * 60),
-        max_delay: Math.round(maxDelayMin * 60),
+        min_delay: Math.max(5, Math.round(minDelayMin * 60)),
+        max_delay: Math.max(5, Math.round(maxDelayMin * 60)),
+        max_customers: maxCustomers,
         morning: {
           start: document.getElementById('mStart').value,
           end: document.getElementById('mEnd').value,
