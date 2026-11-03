@@ -300,7 +300,11 @@ class ZaloBrowserAgent:
 
             page = self.page
 
-            # Locate search input
+            # STEP 1: Record previous chat header (if any) so we verify the chat ACTUALLY switches
+            prev_header_elem = await page.query_selector(".header-title")
+            prev_header_text = (await prev_header_elem.inner_text()).strip() if prev_header_elem else ""
+
+            # STEP 2: Locate search input
             search_input = await page.wait_for_selector(
                 "#contact-search-input, input[placeholder*='Tìm kiếm']",
                 timeout=10000
@@ -309,60 +313,110 @@ class ZaloBrowserAgent:
                 log("❌ Không tìm thấy thanh tìm kiếm Zalo")
                 return {"success": False, "status": "Lỗi giao diện", "note": "Không tìm thấy thanh tìm kiếm"}
 
-            # Clear and type phone
+            # Clear search box thoroughly
             await search_input.click()
             await page.keyboard.press("Control+A")
             await page.keyboard.press("Backspace")
             await asyncio.sleep(0.3)
+
+            # Type phone number
             await search_input.fill(clean_phone)
             log(f"[*] Đã nhập {clean_phone}, đang kiểm tra kết quả...")
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(1.2)
 
-            # Check if auto-complete item appeared
-            search_items = await page.query_selector_all(".global-search__item, .search-result-item, .contact-item, div[id*='conv-item']")
-            if search_items and len(search_items) > 0:
-                log(f"[*] Tìm thấy mục liên hệ trong danh sách, đang chọn...")
-                await search_items[0].click()
-                await asyncio.sleep(1.5)
-            else:
-                # Press Enter to perform global search for phone number
-                log(f"[*] Thử tìm kiếm số điện thoại bằng phím Enter...")
-                await page.keyboard.press("Enter")
-                await asyncio.sleep(2.5)
+            # Check if Zalo shows "Số điện thoại chưa đăng ký tài khoản" or "Không tìm thấy kết quả"
+            not_reg = await page.query_selector("text='chưa đăng ký tài khoản', text='không cho phép tìm kiếm', text='Không tìm thấy kết quả'")
+            if not_reg:
+                log(f"⚠️ SĐT {clean_phone} CHƯA ĐĂNG KÝ ZALO hoặc không cho phép tìm kiếm!")
+                close_btn = await page.query_selector("span:has-text('Đóng'), div:has-text('Đóng')")
+                if close_btn:
+                    try:
+                        await close_btn.click()
+                    except Exception:
+                        await page.keyboard.press("Escape")
+                else:
+                    await page.keyboard.press("Escape")
+                await asyncio.sleep(0.5)
+                return {
+                    "success": False,
+                    "status": "Chưa đăng ký Zalo",
+                    "note": "Số điện thoại chưa đăng ký tài khoản Zalo hoặc chặn tìm kiếm"
+                }
 
-                # Check if item appeared after Enter
-                post_items = await page.query_selector_all(".global-search__item, .search-result-item, .contact-item, div[id*='conv-item']")
-                if post_items and len(post_items) > 0:
-                    await post_items[0].click()
+            # Press Enter to perform search / open chat
+            await page.keyboard.press("Enter")
+            await asyncio.sleep(2.0)
+
+            # Re-check if "chưa đăng ký tài khoản" appeared after Enter
+            not_reg_after_enter = await page.query_selector("text='chưa đăng ký tài khoản', text='không cho phép tìm kiếm', text='Không tìm thấy kết quả'")
+            if not_reg_after_enter:
+                log(f"⚠️ SĐT {clean_phone} CHƯA ĐĂNG KÝ ZALO hoặc không cho phép tìm kiếm!")
+                close_btn = await page.query_selector("span:has-text('Đóng'), div:has-text('Đóng')")
+                if close_btn:
+                    try:
+                        await close_btn.click()
+                    except Exception:
+                        await page.keyboard.press("Escape")
+                else:
+                    await page.keyboard.press("Escape")
+                await asyncio.sleep(0.5)
+                return {
+                    "success": False,
+                    "status": "Chưa đăng ký Zalo",
+                    "note": "Số điện thoại chưa đăng ký tài khoản Zalo hoặc chặn tìm kiếm"
+                }
+
+            # If user profile modal popup with "Nhắn tin" appeared, click it
+            msg_btn = await page.query_selector("button:has-text('Nhắn tin'), div[role='button']:has-text('Nhắn tin')")
+            if msg_btn:
+                try:
+                    await msg_btn.click()
                     await asyncio.sleep(1.5)
+                except Exception:
+                    pass
 
-            # Check if chat input is available
-            chat_input = None
-            try:
-                chat_input = await page.wait_for_selector(
-                    "#richInput, div[contenteditable='true'], div.chat-input__content, div.chat-input",
-                    timeout=5000
-                )
-            except Exception:
-                pass
-
-            if not chat_input:
-                log(f"⚠️ SĐT {clean_phone} CHƯA ĐĂNG KÝ ZALO hoặc không tìm thấy cuộc trò chuyện!")
-                await page.keyboard.press("Escape")
-                await asyncio.sleep(0.3)
+            # STEP 3: Check header title of the active chat
+            new_header_elem = await page.query_selector(".header-title")
+            if not new_header_elem:
+                log(f"⚠️ Không mở được cuộc trò chuyện cho SĐT {clean_phone}!")
                 await page.keyboard.press("Escape")
                 return {
                     "success": False,
                     "status": "Chưa đăng ký Zalo",
-                    "note": "Số điện thoại chưa đăng ký tài khoản Zalo hoặc bị ẩn"
+                    "note": "Không tìm thấy hoặc không mở được cuộc trò chuyện"
                 }
 
-            log(f"✅ Đã mở khung chat thành công cho SĐT {clean_phone}!")
+            new_header_text = (await new_header_elem.inner_text()).strip()
+
+            # CRITICAL SECURITY CHECK: If previous chat was open, and header did NOT change at all,
+            # verify that we didn't just stay in the old chat!
+            if prev_header_text and new_header_text == prev_header_text:
+                # Check if search input is still showing this phone or if no new contact was opened
+                search_val = await search_input.input_value()
+                if search_val == clean_phone:
+                    log(f"⚠️ SĐT {clean_phone} không khớp với cuộc trò chuyện đang mở ('{new_header_text}'). Bỏ qua để tránh gửi nhầm!")
+                    close_btn = await page.query_selector("span:has-text('Đóng'), div:has-text('Đóng')")
+                    if close_btn:
+                        await close_btn.click()
+                    else:
+                        await page.keyboard.press("Escape")
+                    return {
+                        "success": False,
+                        "status": "Chưa đăng ký Zalo",
+                        "note": "SĐT không tồn tại trên Zalo hoặc Zalo không mở cuộc trò chuyện mới"
+                    }
+
+            # STEP 4: Chat input check
+            chat_input = await page.query_selector("#richInput, div[contenteditable='true']")
+            if not chat_input:
+                log(f"⚠️ Không tìm thấy khung nhập tin nhắn cho {new_header_text} ({clean_phone})")
+                return {"success": False, "status": "Lỗi", "note": "Không tìm thấy khung nhập tin nhắn"}
+
+            log(f"✅ Đã mở khung chat thành công: {new_header_text} ({clean_phone})!")
             await chat_input.click()
             await asyncio.sleep(0.3)
 
-            # Fill message
-            # For multiline messages, shift+enter or fill innerText
+            # STEP 5: Fill message
             lines = message.split("\n")
             for i, line in enumerate(lines):
                 if line:
@@ -374,13 +428,23 @@ class ZaloBrowserAgent:
             await asyncio.sleep(0.5)
             log("📤 Đang gửi tin nhắn...")
             await page.keyboard.press("Enter")
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(2.0)
 
-            log(f"🎉 Đã gửi tin nhắn thành công tới SĐT {clean_phone}!")
+            # STEP 6: Check if stranger message blocked banner appeared
+            stranger_blocked = await page.query_selector("text='chặn không nhận tin nhắn từ người lạ', text='chưa thể gửi tin nhắn đến người này'")
+            if stranger_blocked:
+                log(f"⚠️ Khách hàng {new_header_text} ({clean_phone}) CHẶN TIN NHẮN TỪ NGƯỜI LẠ!")
+                return {
+                    "success": False,
+                    "status": "Chặn người lạ",
+                    "note": "Khách hàng chặn không nhận tin nhắn từ người lạ"
+                }
+
+            log(f"🎉 Đã gửi tin nhắn thành công tới: {new_header_text} ({clean_phone})!")
             return {
                 "success": True,
                 "status": "Đã gửi",
-                "note": "Gửi thành công qua Zalo Web"
+                "note": f"Gửi thành công tới {new_header_text}"
             }
 
     async def reset_session(self) -> bool:

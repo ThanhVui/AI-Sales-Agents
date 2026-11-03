@@ -22,16 +22,28 @@ class SupabaseManager:
     def is_connected(self) -> bool:
         return self._connected and self.client is not None
 
-    def get_customers(self, limit: int = 2500) -> List[Dict[str, Any]]:
-        """Fetch all customers from Supabase."""
+    def get_customers(self, limit: int = 5000) -> List[Dict[str, Any]]:
+        """Fetch customers from Supabase with automatic pagination past 1,000 row limits."""
         if not self.is_connected:
             return []
-        try:
-            res = self.client.table("customers").select("*").order("id", desc=False).limit(limit).execute()
-            return res.data or []
-        except Exception as e:
-            print(f"[SupabaseManager] Error fetching customers: {e}")
-            return []
+        all_data = []
+        page_size = 1000
+        offset = 0
+        while len(all_data) < limit:
+            try:
+                chunk_limit = min(page_size, limit - len(all_data))
+                res = self.client.table("customers").select("*").order("id", desc=False).range(offset, offset + chunk_limit - 1).execute()
+                data = res.data or []
+                if not data:
+                    break
+                all_data.extend(data)
+                if len(data) < chunk_limit:
+                    break
+                offset += len(data)
+            except Exception as e:
+                print(f"[SupabaseManager] Error fetching customers range {offset}: {e}")
+                break
+        return all_data
 
     def add_customer(self, customer: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Insert a single customer into Supabase."""
@@ -51,14 +63,14 @@ class SupabaseManager:
                 "status": customer.get("status") or customer.get("Trạng Thái") or "Chưa gửi",
                 "updated_at": datetime.utcnow().isoformat()
             }
-            res = self.client.table("customers").insert(record).execute()
+            res = self.client.table("customers").upsert(record, on_conflict="phone").execute()
             return res.data[0] if res.data else record
         except Exception as e:
             print(f"[SupabaseManager] Error adding customer: {e}")
             return None
 
     def upsert_customers(self, customers: List[Dict[str, Any]], batch_size: int = 100) -> int:
-        """Batch upsert customers into Supabase."""
+        """Batch upsert customers into Supabase with duplicate protection."""
         if not self.is_connected or not customers:
             return 0
         total_inserted = 0
@@ -67,22 +79,26 @@ class SupabaseManager:
                 batch = customers[i:i + batch_size]
                 records = []
                 for c in batch:
+                    phone = str(c.get("phone") or c.get("Điện Thoại") or "").strip()
+                    if not phone:
+                        continue
                     records.append({
                         "stt": c.get("stt") or c.get("STT") or 0,
                         "name": c.get("name") or c.get("Tên Khách Hàng") or "",
                         "apartment": c.get("apartment") or c.get("Tên Căn Hộ") or "",
                         "block": c.get("block") or c.get("Mã Tòa") or "",
                         "axis": c.get("axis") or c.get("Trục Căn") or "",
-                        "phone": str(c.get("phone") or c.get("Điện Thoại") or "").strip(),
+                        "phone": phone,
                         "price": str(c.get("price") or c.get("Giá Gốc") or ""),
                         "email": c.get("email") or c.get("Email") or "",
                         "note": c.get("note") or c.get("Ghi Chú") or "",
                         "status": c.get("status") or c.get("Trạng Thái") or "Chưa gửi",
                         "updated_at": datetime.utcnow().isoformat()
                     })
-                res = self.client.table("customers").insert(records).execute()
-                if res.data:
-                    total_inserted += len(res.data)
+                if records:
+                    res = self.client.table("customers").upsert(records, on_conflict="phone").execute()
+                    if res.data:
+                        total_inserted += len(res.data)
         except Exception as e:
             print(f"[SupabaseManager] Batch upsert error: {e}")
         return total_inserted

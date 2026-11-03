@@ -127,6 +127,13 @@ class BatchWorker:
         self._pause_event.set()
         self._reset_daily_quota_if_needed()
 
+        # Load all phones that were ever marked 'Đã gửi' in campaign_logs to prevent ANY duplicate sends
+        try:
+            sent_records = supabase_db.client.table("campaign_logs").select("phone").eq("status", "Đã gửi").execute()
+            self.sent_phones_history = set("".join(filter(str.isdigit, str(r.get("phone", "")))) for r in (sent_records.data or []))
+        except Exception as e:
+            self.sent_phones_history = set()
+
         min_d = self.schedule_config.get("min_delay", 300)
         max_d = self.schedule_config.get("max_delay", 600)
 
@@ -208,17 +215,22 @@ class BatchWorker:
                 apt = c.get("apartment") or c.get("Tên Căn Hộ") or ""
                 current_status = c.get("status") or c.get("Trạng Thái") or ""
 
-                # Skip if already processed
-                if current_status in ("Đã gửi", "Chưa đăng ký Zalo"):
+                clean_phone = "".join(filter(str.isdigit, phone))
+                if not clean_phone:
                     cust_idx += 1
                     continue
 
-                if not phone:
+                # STRICT DUPLICATE PREVENTION:
+                # If already sent in this batch OR in any past campaign log, skip immediately!
+                if clean_phone in self.sent_phones_history or current_status in ("Đã gửi", "Chưa đăng ký Zalo", "Chặn người lạ"):
+                    self.add_log(f"⏭️ Bỏ qua {name} ({clean_phone}) - Căn {apt} vì đã gửi hoặc đã xử lý trước đó.")
+                    if clean_phone in self.sent_phones_history:
+                        c["status"] = "Đã gửi"
+                        c["Trạng Thái"] = "Đã gửi"
                     cust_idx += 1
                     continue
 
                 # Safety constraint: if test_only is enabled, skip numbers other than 0901514312
-                clean_phone = "".join(filter(str.isdigit, phone))
                 if test_only and clean_phone != "0901514312":
                     cust_idx += 1
                     continue
@@ -240,6 +252,7 @@ class BatchWorker:
 
                 if result.get("success"):
                     self.sent_count += 1
+                    self.sent_phones_history.add(clean_phone)
                     if mode == "schedule":
                         act = self._get_active_session()
                         if act:

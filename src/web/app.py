@@ -305,8 +305,19 @@ async def get_all_customers(background_tasks: BackgroundTasks):
     # Sync latest statuses from Supabase
     if supabase_db.is_connected:
         try:
-            db_records = supabase_db.get_customers(limit=3000)
+            db_records = supabase_db.get_customers(limit=5000)
             status_map = {"".join(filter(str.isdigit, str(r.get("phone", "")))): r for r in db_records if r.get("phone")}
+
+            # Merge from campaign_logs as ground truth for sent messages
+            try:
+                logs_res = supabase_db.client.table("campaign_logs").select("phone,status,note").execute()
+                for l in (logs_res.data or []):
+                    p = "".join(filter(str.isdigit, str(l.get("phone", ""))))
+                    if p:
+                        st = l.get("status") or "Đã gửi"
+                        status_map[p] = {"status": st, "note": l.get("note", "")}
+            except Exception as e_log:
+                print(f"[Supabase Status Merge Logs] Note: {e_log}")
             
             # Update existing cached customers
             matched_phones = set()

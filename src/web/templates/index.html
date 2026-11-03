@@ -411,6 +411,7 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
               <option value="Chưa gửi">Chưa gửi</option>
               <option value="Đã gửi">Đã gửi</option>
               <option value="Chưa đăng ký Zalo">Chưa ĐK Zalo</option>
+              <option value="Chặn người lạ">Chặn người lạ</option>
               <option value="Lỗi">Lỗi</option>
             </select>
           </div>
@@ -1785,6 +1786,8 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
           statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đã gửi</span>';
         } else if (c.status === 'Chưa đăng ký Zalo') {
           statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Chưa ĐK Zalo</span>';
+        } else if (c.status === 'Chặn người lạ') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">Chặn người lạ</span>';
         } else if (c.status && c.status.includes('Lỗi')) {
           statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">Lỗi</span>';
         }
