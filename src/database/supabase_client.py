@@ -63,7 +63,7 @@ class SupabaseManager:
                 "status": customer.get("status") or customer.get("Trạng Thái") or "Chưa gửi",
                 "updated_at": datetime.utcnow().isoformat()
             }
-            res = self.client.table("customers").upsert(record, on_conflict="phone").execute()
+            res = self.client.table("customers").upsert(record).execute()
             return res.data[0] if res.data else record
         except Exception as e:
             print(f"[SupabaseManager] Error adding customer: {e}")
@@ -96,7 +96,7 @@ class SupabaseManager:
                         "updated_at": datetime.utcnow().isoformat()
                     })
                 if records:
-                    res = self.client.table("customers").upsert(records, on_conflict="phone").execute()
+                    res = self.client.table("customers").upsert(records).execute()
                     if res.data:
                         total_inserted += len(res.data)
         except Exception as e:

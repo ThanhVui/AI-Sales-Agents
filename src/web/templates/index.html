@@ -64,7 +64,10 @@
             Synexan Real Estate CRM
             <span class="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Bất Động Sản</span>
           </h1>
-          <p class="text-xs text-gray-500">Hệ thống chăm sóc khách hàng & Tự động hóa Zalo Masteri Centre Point</p>
+          <p class="text-xs text-gray-500 flex items-center gap-1.5">
+            Hệ thống chăm sóc khách hàng & Tự động hóa Zalo: 
+            <span id="navbarActiveProjectName" class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Masteri Centre Point</span>
+          </p>
         </div>
       </div>
 
@@ -345,22 +348,41 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       <!-- Top Action Bar -->
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         
-        <!-- Left Title & Counter -->
-        <div class="flex items-center gap-3">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
-            <i class="fa-solid fa-users text-blue-600"></i> Quản Lý Danh Sách Khách Hàng
-          </h2>
-          <span id="custCountBadge" class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-            0 khách hàng
-          </span>
+        <!-- Left: Title, Counter & Project Switcher Tabs -->
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
+              <i class="fa-solid fa-users text-blue-600"></i> Quản Lý Danh Sách Khách Hàng
+            </h2>
+            <span id="custCountBadge" class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+              0 khách hàng
+            </span>
+          </div>
+
+          <!-- DỰ ÁN / FILE CHẠY SELECTOR -->
+          <div class="flex items-center gap-1 bg-gray-100/90 p-1 rounded-lg border border-gray-200 shadow-2xs">
+            <span class="text-xs font-bold text-gray-500 px-2 flex items-center gap-1">
+              <i class="fa-solid fa-layer-group text-blue-600"></i> Dự Án:
+            </span>
+            <button id="btnProjectMasteri" type="button" onclick="switchProject('masteri')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 bg-white text-blue-700 shadow-xs border border-blue-300">
+              <i class="fa-solid fa-building text-blue-600"></i>
+              <span>Masteri Centre Point</span>
+              <span id="badgeMasteriCount" class="text-[10px] px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded-full font-bold">2.290</span>
+            </button>
+            <button id="btnProjectLumiere" type="button" onclick="switchProject('lumiere')" class="px-3 py-1.5 rounded-md text-xs font-medium text-gray-600 hover:text-emerald-700 hover:bg-white/80 transition-all flex items-center gap-1.5">
+              <i class="fa-solid fa-tree text-emerald-600"></i>
+              <span>Lumière Boulevard</span>
+              <span id="badgeLumiereCount" class="text-[10px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded-full font-bold">1.653</span>
+            </button>
+          </div>
         </div>
 
         <!-- Right Action Buttons Toolbar -->
         <div class="flex flex-wrap items-center gap-2">
           
-          <!-- Nạp Masteri -->
-          <button onclick="loadMasteriFile()" id="btnLoadMasteri" class="ant-btn px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-medium flex items-center gap-1.5">
-            <i class="fa-solid fa-bolt text-blue-600"></i> Nạp Masteri (2.290 căn)
+          <!-- Tải lại file gốc -->
+          <button onclick="switchProject(currentProjectId, true)" title="Tải lại và đồng bộ lại file gốc lên Supabase" class="ant-btn px-2.5 py-1.5 rounded-md bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-xs font-medium flex items-center gap-1.5">
+            <i class="fa-solid fa-rotate text-blue-600"></i> Tải lại file gốc
           </button>
 
           <!-- Import Excel -->
@@ -1419,28 +1441,70 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       }
     }
 
-    // Load Masteri File
-    async function loadMasteriFile() {
-      const btn = document.getElementById('btnLoadMasteri');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang nạp...';
+    // Active Project State
+    let currentProjectId = 'masteri';
+
+    // Switch Project (Masteri Centre Point vs Lumière Boulevard vs Custom)
+    async function switchProject(projId, forceReload = false) {
+      currentProjectId = projId;
+
+      // Update UI button tabs
+      const btnMasteri = document.getElementById('btnProjectMasteri');
+      const btnLumiere = document.getElementById('btnProjectLumiere');
+      const navProjName = document.getElementById('navbarActiveProjectName');
+
+      if (projId === 'masteri') {
+        if (btnMasteri) btnMasteri.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 bg-white text-blue-700 shadow-xs border border-blue-300';
+        if (btnLumiere) btnLumiere.className = 'px-3 py-1.5 rounded-md text-xs font-medium text-gray-600 hover:text-emerald-700 hover:bg-white/80 transition-all flex items-center gap-1.5';
+        if (navProjName) navProjName.innerText = 'Masteri Centre Point';
+      } else if (projId === 'lumiere') {
+        if (btnLumiere) btnLumiere.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 bg-white text-emerald-700 shadow-xs border border-emerald-300';
+        if (btnMasteri) btnMasteri.className = 'px-3 py-1.5 rounded-md text-xs font-medium text-gray-600 hover:text-blue-700 hover:bg-white/80 transition-all flex items-center gap-1.5';
+        if (navProjName) navProjName.innerText = 'Lumière Boulevard';
+      }
+
+      // Reset block, axis and search filters
+      selectedBlocks.clear();
+      selectedAxes.clear();
+      const searchInput = document.getElementById('custSearch');
+      if (searchInput) searchInput.value = '';
+      currentPage = 1;
+
+      const projName = projId === 'lumiere' ? 'Lumière Boulevard' : 'Masteri Centre Point';
+      showToast('info', `Đang tải dữ liệu dự án ${projName}...`);
 
       try {
-        const res = await fetch('/api/load-masteri', { method: 'POST' });
+        const url = forceReload 
+          ? (projId === 'lumiere' ? '/api/load-lumiere' : '/api/load-masteri')
+          : `/api/customers?project=${projId}`;
+        const method = forceReload ? 'POST' : 'GET';
+        
+        const res = await fetch(url, { method });
         const data = await res.json();
         if (data.customers) {
           customers = data.customers;
           updateBlockAxisDropdowns();
           renderTable();
           updatePreview();
-          showToast('success', 'Đã nạp 2.290 căn Masteri & tự động đồng bộ Supabase');
+
+          if (projId === 'lumiere') {
+            const bLum = document.getElementById('badgeLumiereCount');
+            if (bLum) bLum.innerText = customers.length.toLocaleString();
+          } else if (projId === 'masteri') {
+            const bMas = document.getElementById('badgeMasteriCount');
+            if (bMas) bMas.innerText = customers.length.toLocaleString();
+          }
+
+          showToast('success', `Đã chuyển sang dự án ${projName} (${customers.length.toLocaleString()} căn)!`);
         }
       } catch (e) {
-        showPopupAlert('error', 'Lỗi tải Masteri', String(e));
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-bolt text-blue-600"></i> Nạp Masteri (2.290 căn)';
+        showPopupAlert('error', 'Lỗi chuyển dự án', String(e));
       }
+    }
+
+    // Load Masteri File (alias for backward compatibility)
+    async function loadMasteriFile() {
+      await switchProject('masteri', true);
     }
 
     // Handle Custom Excel Upload
@@ -2356,7 +2420,7 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
     // Auto-load customers on init
     async function initAutoLoad() {
       try {
-        const res = await fetch('/api/customers');
+        const res = await fetch('/api/customers?project=masteri');
         const data = await res.json();
         if (data.customers && data.customers.length > 0) {
           customers = data.customers;
@@ -2364,10 +2428,10 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
           renderTable();
           updatePreview();
         } else {
-          loadMasteriFile();
+          switchProject('masteri', true);
         }
       } catch (e) {
-        loadMasteriFile();
+        switchProject('masteri', true);
       }
     }
 

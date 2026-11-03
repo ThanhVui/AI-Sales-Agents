@@ -18,8 +18,115 @@ app = FastAPI(
     description="Multi-domain AI Sales Assistant with Zalo Web Automation & Supabase Sync"
 )
 
-# In-memory customer cache for high performance
+# In-memory customer cache per project for high performance
+_cached_datasets: Dict[str, List[Dict[str, Any]]] = {}
+_active_project: str = "masteri"
 _cached_customers: List[Dict[str, Any]] = []
+
+
+def parse_masteri_file() -> List[Dict[str, Any]]:
+    """Parse Masteri Centre Point 2024 Excel file."""
+    excel_path = settings.DATA_DIR / "Masteri Centre Point 2024.xlsx"
+    if not excel_path.exists():
+        return []
+
+    wb = openpyxl.load_workbook(str(excel_path), read_only=True, data_only=True)
+    ws = wb.active
+    customers = []
+    for r_idx, row in enumerate(ws.iter_rows(values_only=True)):
+        if r_idx == 0:
+            continue
+
+        stt, name, apt, block, axis, phone, price, email, note = "", "", "", "", "", "", "", "", ""
+        if len(row) > 0 and row[0] is not None: stt = row[0]
+        if len(row) > 1 and row[1] is not None: name = str(row[1]).strip()
+        if len(row) > 2 and row[2] is not None: apt = str(row[2]).strip()
+        if len(row) > 3 and row[3] is not None: block = str(row[3]).strip()
+        if len(row) > 4 and row[4] is not None: axis = str(row[4]).strip()
+        if len(row) > 5 and row[5] is not None: phone = str(row[5]).strip()
+        if len(row) > 6 and row[6] is not None: price = str(row[6]).strip()
+        if len(row) > 7 and row[7] is not None: email = str(row[7]).strip()
+        if len(row) > 8 and row[8] is not None: note = str(row[8]).strip()
+
+        if phone or apt:
+            customers.append({
+                "stt": stt or len(customers) + 1,
+                "name": name,
+                "apartment": apt,
+                "block": block,
+                "axis": axis,
+                "phone": phone,
+                "price": price,
+                "email": email,
+                "note": note,
+                "status": "Chưa gửi",
+                "project": "Masteri Centre Point",
+                "project_id": "masteri"
+            })
+
+    wb.close()
+    return customers
+
+
+def parse_lumiere_file() -> List[Dict[str, Any]]:
+    """Parse Lumière Boulevard Excel file."""
+    excel_path = settings.DATA_DIR / "Lumiere-Boulevard-1 (1).xlsx"
+    if not excel_path.exists():
+        alt = settings.DATA_DIR / "Lumiere-Boulevard-1.xlsx"
+        if alt.exists():
+            excel_path = alt
+        else:
+            return []
+
+    wb = openpyxl.load_workbook(str(excel_path), data_only=True)
+    ws = wb.active
+    customers = []
+    for r_idx, row in enumerate(ws.iter_rows(values_only=True)):
+        if r_idx == 0:
+            continue
+
+        stt = row[0]
+        cust_code = str(row[1] or "").strip()
+        apt_code = str(row[2] or "").strip()
+        apt = str(row[3] or "").strip()
+        block = str(row[4] or "").strip()
+        axis = str(row[5] or "").strip()
+        email = str(row[6] or "").strip()
+        phone = str(row[9] or "").strip()
+        sale_name = str(row[12] or "").strip()
+
+        if not phone and not apt:
+            continue
+
+        # Extract block and axis if formulas were not evaluated
+        if not block and apt:
+            block = apt.split(".")[0]
+        if not axis and apt:
+            axis = apt.split(".")[-1]
+
+        name = f"Chủ căn {apt}" if apt else "Anh/Chị"
+        note_parts = []
+        if cust_code: note_parts.append(f"Mã: {cust_code}")
+        if sale_name: note_parts.append(f"Sale: {sale_name}")
+        note = " | ".join(note_parts)
+
+        customers.append({
+            "stt": stt or len(customers) + 1,
+            "name": name,
+            "apartment": apt,
+            "block": block,
+            "axis": axis,
+            "phone": phone,
+            "price": "",
+            "email": email,
+            "note": note,
+            "status": "Chưa gửi",
+            "project": "Lumière Boulevard",
+            "project_id": "lumiere"
+        })
+
+    wb.close()
+    return customers
 
 # Pydantic schemas
 class SingleSendRequest(BaseModel):
@@ -291,24 +398,71 @@ async def send_single_message(req: SingleSendRequest):
     return res
 
 
+@app.get("/api/projects")
+async def get_projects():
+    """
+    List available projects with customer counts and active status.
+    """
+    global _cached_datasets, _active_project
+    masteri_count = len(_cached_datasets["masteri"]) if "masteri" in _cached_datasets else 2290
+    lumiere_count = len(_cached_datasets["lumiere"]) if "lumiere" in _cached_datasets else 1653
+
+    projects = [
+        {
+            "id": "masteri",
+            "name": "Masteri Centre Point",
+            "count": masteri_count,
+            "filename": "Masteri Centre Point 2024.xlsx"
+        },
+        {
+            "id": "lumiere",
+            "name": "Lumière Boulevard",
+            "count": lumiere_count,
+            "filename": "Lumiere-Boulevard-1 (1).xlsx"
+        }
+    ]
+    if "custom" in _cached_datasets:
+        projects.append({
+            "id": "custom",
+            "name": "File Excel tải lên",
+            "count": len(_cached_datasets["custom"]),
+            "filename": "Custom Upload"
+        })
+
+    return {
+        "success": True,
+        "active_project": _active_project,
+        "projects": projects
+    }
+
+
 @app.get("/api/customers")
-async def get_all_customers(background_tasks: BackgroundTasks):
+async def get_all_customers(background_tasks: BackgroundTasks, project: Optional[str] = None):
     """
-    Get customer list. Automatically loads Masteri dataset and merges latest statuses from Supabase.
+    Get customer list for selected project (masteri, lumiere, or custom).
+    Merges latest statuses from Supabase.
     """
-    global _cached_customers
-    if not _cached_customers:
-        excel_path = settings.DATA_DIR / "Masteri Centre Point 2024.xlsx"
-        if excel_path.exists():
+    global _cached_datasets, _active_project, _cached_customers
+
+    if project and project in ("masteri", "lumiere", "custom"):
+        _active_project = project
+
+    # Ensure dataset is loaded for the active project
+    if _active_project not in _cached_datasets or not _cached_datasets.get(_active_project):
+        if _active_project == "lumiere":
+            await load_lumiere_dataset(background_tasks)
+        else:
             await load_masteri_dataset(background_tasks)
 
-    # Sync latest statuses from Supabase
+    current_customers = _cached_datasets.get(_active_project, _cached_customers)
+    _cached_customers = current_customers
+
+    # Sync latest statuses from Supabase for this project
     if supabase_db.is_connected:
         try:
-            db_records = supabase_db.get_customers(limit=5000)
-            status_map = {"".join(filter(str.isdigit, str(r.get("phone", "")))): r for r in db_records if r.get("phone")}
+            status_map = {}
 
-            # Merge from campaign_logs as ground truth for sent messages
+            # 1. Check campaign_logs as ground truth for sent messages
             try:
                 logs_res = supabase_db.client.table("campaign_logs").select("phone,status,note").execute()
                 for l in (logs_res.data or []):
@@ -318,37 +472,38 @@ async def get_all_customers(background_tasks: BackgroundTasks):
                         status_map[p] = {"status": st, "note": l.get("note", "")}
             except Exception as e_log:
                 print(f"[Supabase Status Merge Logs] Note: {e_log}")
-            
-            # Update existing cached customers
-            matched_phones = set()
-            for c in _cached_customers:
+
+            # 2. Check customers table for notes or updated statuses
+            try:
+                db_records = supabase_db.get_customers(limit=5000)
+                for r in db_records:
+                    p = "".join(filter(str.isdigit, str(r.get("phone", ""))))
+                    if p and p not in status_map:
+                        st = r.get("status")
+                        if st and st != "Chưa gửi":
+                            status_map[p] = {"status": st, "note": r.get("note", "")}
+            except Exception as e_db:
+                print(f"[Supabase Status Merge DB] Note: {e_db}")
+
+            # Update existing cached customers of active project in-place
+            for c in current_customers:
                 clean_p = "".join(filter(str.isdigit, str(c.get("phone", ""))))
                 if clean_p in status_map:
-                    matched_phones.add(clean_p)
                     db_item = status_map[clean_p]
                     if db_item.get("status"):
                         c["status"] = db_item.get("status")
                     if db_item.get("note"):
                         c["note"] = db_item.get("note")
 
-            # Add any DB customers that weren't in the initial file
-            for clean_p, db_item in status_map.items():
-                if clean_p not in matched_phones and clean_p:
-                    _cached_customers.insert(0, {
-                        "stt": db_item.get("stt") or 1,
-                        "name": db_item.get("name") or "Khách Hàng",
-                        "apartment": db_item.get("apartment") or "",
-                        "block": db_item.get("block") or "",
-                        "axis": db_item.get("axis") or "",
-                        "phone": db_item.get("phone") or clean_p,
-                        "price": db_item.get("price") or "",
-                        "note": db_item.get("note") or "",
-                        "status": db_item.get("status") or "Chưa gửi"
-                    })
         except Exception as e:
             print(f"[Supabase Status Merge] Error: {e}")
 
-    return {"success": True, "customers": _cached_customers}
+    return {
+        "success": True,
+        "project": _active_project,
+        "count": len(current_customers),
+        "customers": current_customers
+    }
 
 
 @app.post("/api/customers/add")
@@ -356,8 +511,13 @@ async def add_customer(cust: AddCustomerRequest):
     """
     Add a single customer to active memory and Supabase.
     """
+    global _cached_customers, _cached_datasets, _active_project
     data = cust.dict()
+    data["project"] = "Masteri Centre Point" if _active_project == "masteri" else "Lumière Boulevard"
+    data["project_id"] = _active_project
     _cached_customers.insert(0, data)
+    if _active_project in _cached_datasets:
+        _cached_datasets[_active_project].insert(0, data)
     supabase_res = supabase_db.add_customer(data)
     return {"success": True, "customer": supabase_res or data}
 
@@ -371,7 +531,7 @@ async def update_customer(req: UpdateCustomerRequest):
     updates = {k: v for k, v in req.dict().items() if v is not None and k != "phone"}
     
     # Update cache
-    global _cached_customers
+    global _cached_customers, _cached_datasets, _active_project
     found = False
     for c in _cached_customers:
         p = "".join(filter(str.isdigit, str(c.get("phone", ""))))
@@ -409,8 +569,10 @@ async def delete_customer(req: DeleteCustomerRequest):
     Delete a customer from memory and Supabase.
     """
     clean_phone = "".join(filter(str.isdigit, req.phone))
-    global _cached_customers
+    global _cached_customers, _cached_datasets, _active_project
     _cached_customers = [c for c in _cached_customers if "".join(filter(str.isdigit, str(c.get("phone", "")))) != clean_phone]
+    if _active_project in _cached_datasets:
+        _cached_datasets[_active_project] = [c for c in _cached_datasets[_active_project] if "".join(filter(str.isdigit, str(c.get("phone", "")))) != clean_phone]
     supabase_db.delete_customer(clean_phone)
     return {"success": True}
 
@@ -418,12 +580,14 @@ async def delete_customer(req: DeleteCustomerRequest):
 @app.post("/api/customers/delete-all")
 async def delete_all_customers():
     """
-    Delete all customers from memory and Supabase.
+    Delete all customers from active project memory and Supabase.
     """
-    global _cached_customers
+    global _cached_customers, _cached_datasets, _active_project
     _cached_customers = []
+    if _active_project in _cached_datasets:
+        _cached_datasets[_active_project] = []
     supabase_db.delete_all_customers()
-    return {"success": True, "message": "Đã xóa toàn bộ khách hàng"}
+    return {"success": True, "message": f"Đã xóa toàn bộ khách hàng dự án {_active_project}"}
 
 
 @app.get("/api/customers/detail")
@@ -476,53 +640,42 @@ async def load_masteri_dataset(background_tasks: BackgroundTasks):
     Fast loader for Masteri Centre Point 2024 (2,290 records).
     Automatically syncs to Supabase in background.
     """
-    global _cached_customers
-    excel_path = settings.DATA_DIR / "Masteri Centre Point 2024.xlsx"
-    if not excel_path.exists():
+    global _cached_datasets, _active_project, _cached_customers
+    customers = parse_masteri_file()
+    if not customers:
         raise HTTPException(status_code=404, detail="Không tìm thấy file Masteri Centre Point 2024.xlsx")
 
-    wb = openpyxl.load_workbook(str(excel_path), read_only=True, data_only=True)
-    ws = wb.active
-
-    headers = []
-    customers = []
-    for r_idx, row in enumerate(ws.iter_rows(values_only=True)):
-        if r_idx == 0:
-            headers = [str(c or "").strip() for c in row]
-            continue
-
-        stt, name, apt, block, axis, phone, price, email, note = "", "", "", "", "", "", "", "", ""
-        if len(row) > 0 and row[0] is not None: stt = row[0]
-        if len(row) > 1 and row[1] is not None: name = str(row[1]).strip()
-        if len(row) > 2 and row[2] is not None: apt = str(row[2]).strip()
-        if len(row) > 3 and row[3] is not None: block = str(row[3]).strip()
-        if len(row) > 4 and row[4] is not None: axis = str(row[4]).strip()
-        if len(row) > 5 and row[5] is not None: phone = str(row[5]).strip()
-        if len(row) > 6 and row[6] is not None: price = str(row[6]).strip()
-        if len(row) > 7 and row[7] is not None: email = str(row[7]).strip()
-        if len(row) > 8 and row[8] is not None: note = str(row[8]).strip()
-
-        if phone:
-            customers.append({
-                "stt": stt or len(customers) + 1,
-                "name": name,
-                "apartment": apt,
-                "block": block,
-                "axis": axis,
-                "phone": phone,
-                "price": price,
-                "email": email,
-                "note": note,
-                "status": "Chưa gửi"
-            })
-
-    wb.close()
+    _cached_datasets["masteri"] = customers
+    _active_project = "masteri"
     _cached_customers = customers
+
     # Auto sync to Supabase in background
     if supabase_db.is_connected:
         background_tasks.add_task(supabase_db.upsert_customers, customers)
         
-    return {"success": True, "count": len(customers), "customers": customers, "auto_synced": True}
+    return {"success": True, "project": "masteri", "count": len(customers), "customers": customers, "auto_synced": True}
+
+
+@app.post("/api/load-lumiere")
+async def load_lumiere_dataset(background_tasks: BackgroundTasks):
+    """
+    Fast loader for Lumière Boulevard (1,526 records).
+    Automatically syncs to Supabase in background.
+    """
+    global _cached_datasets, _active_project, _cached_customers
+    customers = parse_lumiere_file()
+    if not customers:
+        raise HTTPException(status_code=404, detail="Không tìm thấy file Lumiere-Boulevard-1 (1).xlsx")
+
+    _cached_datasets["lumiere"] = customers
+    _active_project = "lumiere"
+    _cached_customers = customers
+
+    # Auto sync to Supabase in background
+    if supabase_db.is_connected:
+        background_tasks.add_task(supabase_db.upsert_customers, customers)
+        
+    return {"success": True, "project": "lumiere", "count": len(customers), "customers": customers, "auto_synced": True}
 
 
 # Batch background endpoints
