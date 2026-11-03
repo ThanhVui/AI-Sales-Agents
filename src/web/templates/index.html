@@ -2209,13 +2209,36 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       }
 
       if (!testOnly) {
+        const targetCount = targetCustomers.length;
+        const totalCount = customers.length;
+        const currentProjectName = (currentProjectId === 'lumiere') ? 'Lumière Boulevard' : 'Masteri Centre Point';
         let confirmText = '';
+
         if (isScheduleMode) {
-          const filterNote = isFiltered ? ` (đang lọc ${targetCustomers.toLocaleString()} / ${customers.length.toLocaleString()} khách)` : '';
-          confirmText = `Chiến dịch <b>Lịch Trình Chống Khóa (3 Ca)</b> sẽ áp dụng cho <b>${targetCustomers.toLocaleString()} khách hàng</b>${filterNote}.<br><span class="text-xs text-gray-500 mt-1 block">Tự động chia ca: Sáng (9h-11h), Chiều (14h-16h), Tối (19h-20h) kèm giãn cách ngẫu nhiên.</span>`;
+          const filterNote = isFiltered ? `<div class="mt-2 text-xs text-blue-700 bg-blue-50 p-2 rounded border border-blue-200">🔍 Đang lọc: <b>${targetCount.toLocaleString()}</b> / <b>${totalCount.toLocaleString()}</b> khách (${currentProjectName})</div>` : '';
+          confirmText = `<div class="text-left text-xs leading-relaxed space-y-2">
+            <div>Chiến dịch <b>Lịch Trình Chống Khóa (3 Ca)</b> sẽ áp dụng cho <b>${targetCount.toLocaleString()} khách hàng</b> (${currentProjectName}).</div>
+            <div class="text-gray-600 bg-gray-50 p-2 rounded border border-gray-200">
+              • Ca Sáng: 09:00 - 11:00 (Tối đa 15 khách)<br>
+              • Ca Chiều: 14:00 - 16:00 (Tối đa 15 khách)<br>
+              • Ca Tối: 19:00 - 20:00 (Tối đa 10 khách)<br>
+              • Giãn cách ngẫu nhiên: <b>${minDelayMin} đến ${maxDelayMin} phút</b>/tin
+            </div>
+            ${filterNote}
+          </div>`;
         } else {
-          const countText = maxCustomers ? `<b>${maxCustomers.toLocaleString()} khách hàng</b> (trên ${targetCustomers.toLocaleString()} khách)` : `<b>toàn bộ ${targetCustomers.toLocaleString()} khách hàng</b>`;
-          confirmText = `Chế độ <b>Tự Chạy Tự Do</b>: Sẽ gửi cho ${countText} với thời gian giãn cách ngẫu nhiên từ <b>${minDelayMin} đến ${maxDelayMin} phút</b>.<br><span class="text-xs text-emerald-600 mt-1 block">✓ Chạy ngay lập tức, không phụ thuộc khung giờ ca.</span>`;
+          const countText = maxCustomers 
+            ? `<b>${maxCustomers.toLocaleString()} khách hàng</b> (trong số ${targetCount.toLocaleString()} khách được chọn)`
+            : `<b>toàn bộ ${targetCount.toLocaleString()} khách hàng</b>`;
+          const filterNote = isFiltered ? `<div class="mt-1 text-xs text-blue-700">🔍 Đang lọc theo bộ lọc: <b>${currentProjectName}</b></div>` : `<div class="mt-1 text-xs text-gray-500">Dự án: <b>${currentProjectName}</b></div>`;
+          confirmText = `<div class="text-left text-xs leading-relaxed space-y-2">
+            <div>Chế độ <b>Tự Chạy Tự Do</b>: Sẽ gửi cho ${countText}.</div>
+            <div class="bg-emerald-50 text-emerald-800 p-2.5 rounded border border-emerald-200">
+              ✓ Giãn cách ngẫu nhiên: <b>${minDelayMin} đến ${maxDelayMin} phút</b>/tin<br>
+              ✓ Chạy ngay lập tức, không phụ thuộc khung giờ ca.
+            </div>
+            ${filterNote}
+          </div>`;
         }
 
         const confirm = await Swal.fire({
