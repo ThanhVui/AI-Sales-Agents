@@ -52,7 +52,7 @@
 
   <!-- Header / Navbar (Ant Design Style) -->
   <header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 min-h-16 py-2 flex flex-wrap items-center justify-between gap-4">
       
       <!-- Brand & Project Title -->
       <div class="flex items-center gap-3">
@@ -65,8 +65,7 @@
             <span class="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Bất Động Sản</span>
           </h1>
           <p class="text-xs text-gray-500 flex items-center gap-1.5">
-            Hệ thống chăm sóc khách hàng & Tự động hóa Zalo: 
-            <span id="navbarActiveProjectName" class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Masteri Centre Point</span>
+            Dự án: <span id="navbarActiveProjectName" class="font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Masteri Centre Point</span>
           </p>
         </div>
       </div>
@@ -2388,12 +2387,12 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       if (isBatchRunning && isBatchForThisProject) {
         const batchTotal = currentBatchState.total_count || total;
         const batchIndex = currentBatchState.current_index || processed;
-        document.getElementById('metricProgress').innerText = ${batchIndex} / ;
+        document.getElementById('metricProgress').innerText = batchIndex + ' / ' + batchTotal;
         document.getElementById('metricSent').innerText = Math.max(sent, currentBatchState.sent_count || 0);
         document.getElementById('metricNotReg').innerText = Math.max(notReg, currentBatchState.not_registered_count || 0);
         document.getElementById('metricError').innerText = Math.max(error, currentBatchState.error_count || 0);
       } else {
-        document.getElementById('metricProgress').innerText = ${processed} / ;
+        document.getElementById('metricProgress').innerText = processed + ' / ' + total;
         document.getElementById('metricSent').innerText = sent;
         document.getElementById('metricNotReg').innerText = notReg;
         document.getElementById('metricError').innerText = error;
@@ -2412,8 +2411,8 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
 
       if (!isForThisProject && state && (state.status === 'RUNNING' || state.status === 'WAITING_SCHEDULE')) {
         const otherName = state.project_name || 'Dự án khác';
-        sessionText.innerText = Đang chạy ngầm: ;
-        delayText.innerText = state.next_action_time ? Lần gửi tới:  : '';
+        sessionText.innerText = 'Đang chạy ngầm: ' + otherName;
+        delayText.innerText = state.next_action_time ? ('Lần gửi tới: ' + state.next_action_time) : '';
         updateBatchButtonStyles('IDLE');
         return;
       }
@@ -2421,12 +2420,12 @@ Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!</text
       if (state.status === 'WAITING_SCHEDULE') {
         sessionText.innerText = state.current_session_name || 'Đang nghỉ chờ khung giờ tiếp theo';
       } else if (state.status === 'RUNNING') {
-        sessionText.innerText = Đang gửi: Ca ;
+        sessionText.innerText = 'Đang gửi: Ca ' + (state.current_session_name || 'Liên tục');
       } else {
         sessionText.innerText = 'Chờ kích hoạt chiến dịch';
       }
 
-      delayText.innerText = state.next_action_time ? Lần gửi tới:  : '';
+      delayText.innerText = state.next_action_time ? ('Lần gửi tới: ' + state.next_action_time) : '';
 
       updateBatchButtonStyles(state.status);
     }
