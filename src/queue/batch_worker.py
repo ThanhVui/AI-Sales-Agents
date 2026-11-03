@@ -15,6 +15,8 @@ class BatchWorker:
 
     def __init__(self):
         self.status = "IDLE"  # IDLE, RUNNING, PAUSED, STOPPED, COMPLETED, WAITING_SCHEDULE
+        self.project_id: str = "masteri"
+        self.project_name: str = "Masteri Centre Point"
         self.customers: List[Dict[str, Any]] = []
         self.template: str = ""
         self.current_index: int = 0
@@ -53,6 +55,8 @@ class BatchWorker:
     def get_state(self) -> Dict[str, Any]:
         return {
             "status": self.status,
+            "project_id": getattr(self, "project_id", "masteri"),
+            "project_name": getattr(self, "project_name", "Masteri Centre Point"),
             "current_index": self.current_index,
             "total_count": self.total_count,
             "sent_count": self.sent_count,
@@ -93,11 +97,14 @@ class BatchWorker:
         customers: List[Dict[str, Any]],
         template: str,
         schedule_config: Optional[Dict[str, Any]] = None,
-        test_only: bool = False
+        test_only: bool = False,
+        project_id: str = "masteri"
     ):
         if self.status in ("RUNNING", "WAITING_SCHEDULE"):
             return False
 
+        self.project_id = project_id
+        self.project_name = "Lumière Boulevard" if project_id == "lumiere" else "Masteri Centre Point"
         self.customers = customers
         self.template = template
         if schedule_config:
@@ -127,10 +134,17 @@ class BatchWorker:
         self._pause_event.set()
         self._reset_daily_quota_if_needed()
 
-        # Load all phones that were ever marked 'Đã gửi' in campaign_logs to prevent ANY duplicate sends
+        # Load all phones that were marked 'Đã gửi' for THIS specific project to prevent duplicate sends
         try:
-            sent_records = supabase_db.client.table("campaign_logs").select("phone").eq("status", "Đã gửi").execute()
-            self.sent_phones_history = set("".join(filter(str.isdigit, str(r.get("phone", "")))) for r in (sent_records.data or []))
+            sent_records = supabase_db.client.table("campaign_logs").select("phone,note").eq("status", "Đã gửi").execute()
+            self.sent_phones_history = set()
+            for r in (sent_records.data or []):
+                nt = str(r.get("note", ""))
+                log_proj = "lumiere" if ("[Lumière Boulevard]" in nt or "[lumiere]" in nt.lower()) else "masteri"
+                if log_proj == self.project_id:
+                    p = "".join(filter(str.isdigit, str(r.get("phone", ""))))
+                    if p:
+                        self.sent_phones_history.add(p)
         except Exception as e:
             self.sent_phones_history = set()
 
@@ -266,8 +280,9 @@ class BatchWorker:
                     self.error_count += 1
 
                 # Update in Supabase
-                supabase_db.update_customer_status(phone, new_status, note)
-                supabase_db.log_campaign(phone, name, apt, msg, new_status, note)
+                proj_note = f"[{self.project_name}] {note}" if note else f"[{self.project_name}]"
+                supabase_db.update_customer_status(phone, new_status, proj_note)
+                supabase_db.log_campaign(phone, name, apt, msg, new_status, proj_note)
 
                 cust_idx += 1
 

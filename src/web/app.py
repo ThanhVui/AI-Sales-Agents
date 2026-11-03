@@ -174,6 +174,7 @@ class BatchStartRequest(BaseModel):
     schedule_config: Optional[Dict[str, Any]] = None
     delay: Optional[int] = 15
     test_only: Optional[bool] = False
+    project_id: Optional[str] = "masteri"
 
 
 @app.on_event("startup")
@@ -460,40 +461,40 @@ async def get_all_customers(background_tasks: BackgroundTasks, project: Optional
     # Sync latest statuses from Supabase for this project
     if supabase_db.is_connected:
         try:
+            # Ground truth: campaign_logs contains the real outreach history with phone and apartment
+            logs_res = supabase_db.client.table("campaign_logs").select("phone,apartment,status,note").execute()
+            logs_data = logs_res.data or []
+
+            # Build mapping strictly scoped to active project
+            # All historical logs without a project tag were for Masteri Centre Point
+            # Logs with [Lumière Boulevard] or [lumiere] belong to Lumiere
             status_map = {}
+            for l in logs_data:
+                p = "".join(filter(str.isdigit, str(l.get("phone", ""))))
+                apt = str(l.get("apartment", "")).strip().upper()
+                note_text = str(l.get("note", ""))
+                st = l.get("status") or "Đã gửi"
 
-            # 1. Check campaign_logs as ground truth for sent messages
-            try:
-                logs_res = supabase_db.client.table("campaign_logs").select("phone,status,note").execute()
-                for l in (logs_res.data or []):
-                    p = "".join(filter(str.isdigit, str(l.get("phone", ""))))
-                    if p:
-                        st = l.get("status") or "Đã gửi"
-                        status_map[p] = {"status": st, "note": l.get("note", "")}
-            except Exception as e_log:
-                print(f"[Supabase Status Merge Logs] Note: {e_log}")
-
-            # 2. Check customers table for notes or updated statuses
-            try:
-                db_records = supabase_db.get_customers(limit=5000)
-                for r in db_records:
-                    p = "".join(filter(str.isdigit, str(r.get("phone", ""))))
-                    if p and p not in status_map:
-                        st = r.get("status")
-                        if st and st != "Chưa gửi":
-                            status_map[p] = {"status": st, "note": r.get("note", "")}
-            except Exception as e_db:
-                print(f"[Supabase Status Merge DB] Note: {e_db}")
+                log_proj = "lumiere" if ("[Lumière Boulevard]" in note_text or "[lumiere]" in note_text.lower()) else "masteri"
+                if log_proj == _active_project:
+                    if p and apt:
+                        status_map[(p, apt)] = {"status": st, "note": note_text}
+                    elif apt:
+                        status_map[apt] = {"status": st, "note": note_text}
 
             # Update existing cached customers of active project in-place
             for c in current_customers:
                 clean_p = "".join(filter(str.isdigit, str(c.get("phone", ""))))
-                if clean_p in status_map:
-                    db_item = status_map[clean_p]
-                    if db_item.get("status"):
-                        c["status"] = db_item.get("status")
-                    if db_item.get("note"):
-                        c["note"] = db_item.get("note")
+                clean_apt = str(c.get("apartment", "")).strip().upper()
+
+                match = status_map.get((clean_p, clean_apt)) or status_map.get(clean_apt)
+                if match:
+                    if match.get("status"):
+                        c["status"] = match.get("status")
+                    if match.get("note"):
+                        c["note"] = match.get("note")
+                else:
+                    c["status"] = "Chưa gửi"
 
         except Exception as e:
             print(f"[Supabase Status Merge] Error: {e}")
@@ -685,7 +686,8 @@ async def start_batch(req: BatchStartRequest):
         customers=req.customers,
         template=req.template,
         schedule_config=req.schedule_config,
-        test_only=bool(req.test_only)
+        test_only=bool(req.test_only),
+        project_id=req.project_id or _active_project
     )
     return {"success": ok, "message": "Chiến dịch đã bắt đầu" if ok else "Chiến dịch đang chạy sẵn"}
 
