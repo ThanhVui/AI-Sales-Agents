@@ -42,9 +42,9 @@ class RealEstateAdvisor(BaseAIAdvisor):
 
         if not template:
             template = (
-                "Anh/Chị [Tên Khách Hàng] ơi! Em đang có khách hàng muốn mua hoặc THUÊ căn [Tên Căn Hộ].\n\n"
-                "Mình có thể BÁN hoặc CHO THUÊ không ạ?\n"
-                "Nếu có, hãy cho em biết giá bán nhé!\n"
+                "Chào Anh/Chị! Em đang có một khách hàng muốn mua hoặc thuê căn [Tên Căn Hộ].\n\n"
+                "Mình có dự định bán hoặc cho thuê căn không ạ?\n"
+                "Nếu có, em xin thông tin mức giá chào khách ạ!\n"
                 "Em xin cảm ơn và chúc Anh/Chị có một ngày thật tuyệt vời!"
             )
 
